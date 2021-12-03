@@ -42,9 +42,9 @@ jobs:
         name: Test_lib # optional, default is artifact
         # A file, directory or wildcard pattern that describes what to upload
         path: |
-          ${{github.workspace}}/build/src/CMakeFiles/libyafaray4.dir/libyafaray4*.*
-          ${{github.workspace}}/build/tests/test00/CMakeFiles/yafaray_test00.dir/yafaray_test*
-          ${{github.workspace}}/build/tests/test01/CMakeFiles/yafaray_test01.dir/yafaray_test*
-          ${{github.workspace}}/build/tests/test02/CMakeFiles/yafaray_test02.dir/yafaray_test*
-          ${{github.workspace}}/build/tests/test03/CMakeFiles/yafaray_test03.dir/yafaray_test*
+          ${{github.workspace}}/build/src/libyafaray*.*
+          ${{github.workspace}}/build/tests/test00/yafaray_test*
+          ${{github.workspace}}/build/tests/test01/yafaray_test*
+          ${{github.workspace}}/build/tests/test02/yafaray_test*
+          ${{github.workspace}}/build/tests/test03/yafaray_test*
         
