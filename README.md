@@ -1,3 +1,5 @@
+[![CMake](https://github.com/DavidBluecame/libYafaRay/actions/workflows/cmake.yml/badge.svg)](https://github.com/DavidBluecame/libYafaRay/actions/workflows/cmake.yml)
+
 DESCRIPTION
 -----------
 libYafaRay is a free open-source montecarlo raytracing engine released under the LGPL 2.1 license. Raytracing is a rendering technique for generating realistic images by tracing the path of light through a 3D scene. 
