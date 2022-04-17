@@ -1,4 +1,4 @@
-name: CMake
+name: YafaRay-Build-Test
 
 on:
   push:
@@ -23,22 +23,22 @@ jobs:
         - {
             name: "Test Windows",
             os: windows-latest,
-            artifact: "test_windows.zip"
+            artifact: "test_windows"
           }
         - {
             name: "Test Ubuntu 18.04 LTS",
             os: ubuntu-18.04,
-            artifact: "test_ubuntu_18_04.zip"
+            artifact: "test_ubuntu_18_04_lts"
           }
         - {
-            name: "Test Ubuntu 20.04 LTS",
-            os: ubuntu-20.04,
-            artifact: "test_ubuntu_20_04.zip"
+            name: "Test Ubuntu (latest)",
+            os: ubuntu-latest,
+            artifact: "test_ubuntu_latest"
           }
         - {
             name: "Test macOS",
             os: macos-latest,
-            artifact: "test_mac.zip"
+            artifact: "test_mac"
           }
 
     steps:
@@ -58,7 +58,7 @@ jobs:
       run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Test
-      working-directory: ${{github.workspace}}/install
+      working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}}
@@ -68,6 +68,7 @@ jobs:
       with:
         # Artifact name
         name: ${{ matrix.config.artifact }} # optional, default is artifact
+        working-directory: ${{github.workspace}}/install
         # A file, directory or wildcard pattern that describes what to upload
         path: |
-          ${{github.workspace}}/install/*
+          ./*
