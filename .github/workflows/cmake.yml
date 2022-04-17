@@ -44,11 +44,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
-    - name: Install dependencies on Windows MSVC
-      if: startsWith(matrix.config.name, 'Test Windows MSVC')
-      run: |
-        sudo apt-get update
-        sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype6-dev
+    #- name: Install dependencies on Windows MSVC
+    #  if: startsWith(matrix.config.name, 'Test Windows MSVC')
+    #  run: |
+    #    sudo apt-get update
+    #    sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype6-dev
     
     - name: Install dependencies on Ubuntu 18.04 LTS
       if: startsWith(matrix.config.os, 'ubuntu-18.04')
