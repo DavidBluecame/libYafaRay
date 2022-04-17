@@ -65,7 +65,7 @@ jobs:
       if: startsWith(matrix.config.os, 'mac')
       run: |
         brew install libpng jpeg libtiff openexr freetype
-        brew install opencv --without-eigen --without-numpy --without-opencl --without-openexr --without-python --without-test
+        brew install opencv #--without-eigen --without-numpy --without-opencl --without-openexr --without-python --without-test
 
     - name: Configure CMake in Ubuntu
       if: startsWith(matrix.config.os, 'ubuntu')
