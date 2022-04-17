@@ -64,7 +64,8 @@ jobs:
     - name: Install dependencies on MacOS
       if: startsWith(matrix.config.os, 'mac')
       run: |
-        brew install libpng jpeg libtiff openexr opencv freetype
+        brew install libpng jpeg libtiff openexr freetype
+        brew install opencv --without-contrib --without-cuda --without-examples --without-ffmpeg --without-gphoto2 --without-gstreamer --without-jasper --without-java --without-libdc1394 --without-opengl --without-openni --without-openni2 --without-python3 --without-qt5 --without-quicktime --without-static --without-tbb --without-vtk --without-eigen --without-numpy --without-opencl --without-openexr --without-python --without-test
 
     - name: Configure CMake in Ubuntu
       if: startsWith(matrix.config.os, 'ubuntu')
