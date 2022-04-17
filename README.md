@@ -1,4 +1,4 @@
-[![CMake](https://github.com/DavidBluecame/libYafaRay/actions/workflows/cmake.yml/badge.svg)](https://github.com/DavidBluecame/libYafaRay/actions/workflows/cmake.yml)
+[![build](https://github.com/DavidBluecame/libYafaRay/actions/workflows/build.yml/badge.svg)](https://github.com/DavidBluecame/libYafaRay/actions/workflows/build.yml)
 
 DESCRIPTION
 -----------
