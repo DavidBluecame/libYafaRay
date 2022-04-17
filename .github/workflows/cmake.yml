@@ -21,9 +21,9 @@ jobs:
       matrix:
         config:
         - {
-            name: "Test Windows",
+            name: "Test Windows MSVC",
             os: windows-latest,
-            artifact: "test_windows"
+            artifact: "test_windows_msvc"
           }
         - {
             name: "Test Ubuntu 18.04 LTS",
@@ -31,9 +31,9 @@ jobs:
             artifact: "test_ubuntu_18_04_lts"
           }
         - {
-            name: "Test Ubuntu (latest)",
-            os: ubuntu-latest,
-            artifact: "test_ubuntu_latest"
+            name: "Test Ubuntu 20.04 LTS",
+            os: ubuntu-20.04,
+            artifact: "test_ubuntu_20_04_lts"
           }
         - {
             name: "Test macOS",
@@ -44,11 +44,28 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
-    - name: Install dependencies on Ubuntu
-      if: startsWith(matrix.config.os, 'ubuntu')
+    - name: Install dependencies on Windows MSVC
+      if: startsWith(matrix.config.name, 'Test Windows MSVC')
       run: |
         sudo apt-get update
         sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype6-dev
+    
+    - name: Install dependencies on Ubuntu 18.04 LTS
+      if: startsWith(matrix.config.os, 'ubuntu-18.04')
+      run: |
+        sudo apt-get update
+        sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype6-dev
+    
+    - name: Install dependencies on Ubuntu 20.04 LTS
+      if: startsWith(matrix.config.os, 'ubuntu-20.04')
+      run: |
+        sudo apt-get update
+        sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype-dev
+
+- name: Install dependencies on MacOS
+      if: startsWith(matrix.config.os, 'mac')
+      run: |
+        brew install install libpng jpeg libtiff openexr opencv freetype
 
     - name: Configure CMake in Ubuntu
       if: startsWith(matrix.config.os, 'ubuntu')
@@ -66,7 +83,7 @@ jobs:
       if: startsWith(matrix.config.os, 'macos')
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX:PATH=${{github.workspace}}/install -DYAFARAY_WITH_Freetype=OFF -DYAFARAY_WITH_JPEG=OFF -DYAFARAY_WITH_OpenCV=OFF -DYAFARAY_WITH_OpenEXR=OFF -DYAFARAY_WITH_PNG=OFF -DYAFARAY_WITH_TIFF=OFF
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX:PATH=${{github.workspace}}/install -DYAFARAY_WITH_Freetype=ON -DYAFARAY_WITH_JPEG=ON -DYAFARAY_WITH_OpenCV=ON -DYAFARAY_WITH_OpenEXR=ON -DYAFARAY_WITH_PNG=ON -DYAFARAY_WITH_TIFF=ON
 
     - name: Build
       # Builds your program with the given configuration
