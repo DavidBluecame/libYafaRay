@@ -48,7 +48,7 @@ jobs:
       if: startsWith(matrix.config.os, 'ubuntu')
       run: |
         sudo apt-get update
-        sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype-dev
+        sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype6-dev
 
     - name: Configure CMake in Ubuntu
       if: startsWith(matrix.config.os, 'ubuntu')
