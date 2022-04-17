@@ -26,18 +26,17 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Object> MeshObject::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Object * MeshObject::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
 		logger.logDebug("MeshObject::factory");
 		params.logContents(logger);
 	}
-	std::string name, light_name, visibility, base_object_name;
+	std::string light_name, visibility, base_object_name;
 	bool is_base_object = false, has_uv = false, has_orco = false;
 	int num_faces = 0, num_vertices = 0;
 	int object_index = 0;
-	params.getParam("name", name);
 	params.getParam("light_name", light_name);
 	params.getParam("visibility", visibility);
 	params.getParam("is_base_object", is_base_object);
@@ -46,7 +45,7 @@ std::unique_ptr<Object> MeshObject::factory(Logger &logger, ParamMap &params, co
 	params.getParam("num_vertices", num_vertices);
 	params.getParam("has_uv", has_uv);
 	params.getParam("has_orco", has_orco);
-	auto object = std::unique_ptr<MeshObject>(new MeshObject(num_vertices, num_faces, has_uv, has_orco));
+	auto object = new MeshObject(num_vertices, num_faces, has_uv, has_orco);
 	object->setName(name);
 	object->setLight(scene.getLight(light_name));
 	object->setVisibility(visibility::fromString(visibility));
@@ -76,12 +75,12 @@ void MeshObject::addFace(std::unique_ptr<FacePrimitive> face)
 	}
 }
 
-void MeshObject::addFace(const std::vector<int> &vertices, const std::vector<int> &vertices_uv, const Material *mat)
+void MeshObject::addFace(const std::vector<int> &vertices, const std::vector<int> &vertices_uv, const std::unique_ptr<const Material> *material)
 {
 	std::unique_ptr<FacePrimitive> face;
 	if(vertices.size() == 3) face = std::unique_ptr<FacePrimitive>(new TrianglePrimitive(vertices, vertices_uv, *this));
 	else return; //Other primitives are not supported
-	face->setMaterial(mat);
+	face->setMaterial(material);
 	if(hasNormalsExported()) face->setNormalsIndices(vertices);
 	addFace(std::move(face));
 }
@@ -91,7 +90,7 @@ void MeshObject::calculateNormals()
 	for(auto &face : faces_) face->calculateGeometricNormal();
 }
 
-bool MeshObject::calculateObject(const Material *)
+bool MeshObject::calculateObject(const std::unique_ptr<const Material> *)
 {
 	faces_.shrink_to_fit();
 	points_.shrink_to_fit();
@@ -118,8 +117,8 @@ void MeshObject::addNormal(const Vec3 &n)
 
 float MeshObject::getAngleSine(const std::array<int, 3> &triangle_indices, const std::vector<Point3> &vertices)
 {
-	const Vec3 edge_1 = vertices[triangle_indices[1]] - vertices[triangle_indices[0]];
-	const Vec3 edge_2 = vertices[triangle_indices[2]] - vertices[triangle_indices[0]];
+	const Vec3 edge_1{vertices[triangle_indices[1]] - vertices[triangle_indices[0]]};
+	const Vec3 edge_2{vertices[triangle_indices[2]] - vertices[triangle_indices[0]]};
 	return edge_1.sinFromVectors(edge_2);
 }
 
@@ -132,7 +131,7 @@ bool MeshObject::smoothNormals(Logger &logger, float angle)
 	{
 		for(auto &face : faces_)
 		{
-			const Vec3 n = face->getGeometricNormal();
+			const Vec3 n{face->Primitive::getGeometricNormal()};
 			const std::vector<int> vert_indices = face->getVerticesIndices();
 			const size_t num_indices = vert_indices.size();
 			for(size_t relative_vertex = 0; relative_vertex < num_indices; ++relative_vertex)
@@ -141,7 +140,7 @@ bool MeshObject::smoothNormals(Logger &logger, float angle)
 			}
 			face->setNormalsIndices(vert_indices);
 		}
-		for(size_t idx = 0; idx < normals_.size(); ++idx) normals_[idx].normalize();
+		for(auto &normal : normals_) normal.normalize();
 	}
 	else if(angle > 0.1f) // angle dependant smoothing
 	{
@@ -168,8 +167,8 @@ bool MeshObject::smoothNormals(Logger &logger, float angle)
 			{
 				bool smooth = false;
 				// calculate vertex normal for face
-				const Vec3 face_normal = point_face->getGeometricNormal();
-				Vec3 vertex_normal = face_normal * points_angles_sines[point_id][j];
+				const Vec3 face_normal{point_face->Primitive::getGeometricNormal()};
+				Vec3 vertex_normal{face_normal * points_angles_sines[point_id][j]};
 				int k = 0;
 				for(const auto &point_face_2 : points_faces[point_id])
 				{
@@ -178,7 +177,7 @@ bool MeshObject::smoothNormals(Logger &logger, float angle)
 						k++;
 						continue;
 					}
-					Vec3 face_2_normal = point_face_2->getGeometricNormal();
+					const Vec3 face_2_normal{point_face_2->Primitive::getGeometricNormal()};
 					if((face_normal * face_2_normal) > angle_threshold)
 					{
 						smooth = true;

@@ -54,7 +54,7 @@ Rgb SphereLight::totalEnergy() const { return color_ * area_ /* * num_pi */; }
 
 bool SphereLight::sphereIntersect(const Ray &ray, const Point3 &c, float r_2, float &d_1, float &d_2)
 {
-	Vec3 vf = ray.from_ - c;
+	Vec3 vf{ray.from_ - c};
 	float ea = ray.dir_ * ray.dir_;
 	float eb = 2.0 * vf * ray.dir_;
 	float ec = vf * vf - r_2;
@@ -70,7 +70,7 @@ bool SphereLight::illumSample(const SurfacePoint &sp, LSample &s, Ray &wi) const
 {
 	if(photonOnly()) return false;
 
-	Vec3 cdir = center_ - sp.p_;
+	Vec3 cdir{center_ - sp.p_};
 	float dist_sqr = cdir.lengthSqr();
 	if(dist_sqr <= square_radius_) return false; //only emit light on the outside!
 
@@ -78,10 +78,8 @@ bool SphereLight::illumSample(const SurfacePoint &sp, LSample &s, Ray &wi) const
 	float idist_sqr = 1.f / (dist_sqr);
 	float cos_alpha = math::sqrt(1.f - square_radius_ * idist_sqr);
 	cdir *= 1.f / dist;
-	Vec3 du, dv;
-	Vec3::createCs(cdir, du, dv);
-
-	wi.dir_ = sample::cone(cdir, du, dv, cos_alpha, s.s_1_, s.s_2_);
+	const auto coords{Vec3::createCoordsSystem(cdir)};
+	wi.dir_ = sample::cone(cdir, coords.first, coords.second, cos_alpha, s.s_1_, s.s_2_);
 	float d_1, d_2;
 	if(!sphereIntersect(wi, center_, square_radius_epsilon_, d_1, d_2))
 	{
@@ -105,7 +103,7 @@ bool SphereLight::intersect(const Ray &ray, float &t, Rgb &col, float &ipdf) con
 	float d_1, d_2;
 	if(sphereIntersect(ray, center_, square_radius_, d_1, d_2))
 	{
-		Vec3 cdir = center_ - ray.from_;
+		Vec3 cdir{center_ - ray.from_};
 		float dist_sqr = cdir.lengthSqr();
 		if(dist_sqr <= square_radius_) return false; //only emit light on the outside!
 		float idist_sqr = 1.f / (dist_sqr);
@@ -119,7 +117,7 @@ bool SphereLight::intersect(const Ray &ray, float &t, Rgb &col, float &ipdf) con
 
 float SphereLight::illumPdf(const SurfacePoint &sp, const SurfacePoint &sp_light) const
 {
-	Vec3 cdir = center_ - sp.p_;
+	Vec3 cdir{center_ - sp.p_};
 	float dist_sqr = cdir.lengthSqr();
 	if(dist_sqr <= square_radius_) return 0.f; //only emit light on the outside!
 	float idist_sqr = 1.f / (dist_sqr);
@@ -137,32 +135,30 @@ void SphereLight::emitPdf(const SurfacePoint &sp, const Vec3 &wo, float &area_pd
 
 Rgb SphereLight::emitPhoton(float s_1, float s_2, float s_3, float s_4, Ray &ray, float &ipdf) const
 {
-	Vec3 sdir = sample::sphere(s_3, s_4);
+	Vec3 sdir{sample::sphere(s_3, s_4)};
 	ray.from_ = center_ + radius_ * sdir;
-	Vec3 du, dv;
-	Vec3::createCs(sdir, du, dv);
-	ray.dir_ = sample::cosHemisphere(sdir, du, dv, s_1, s_2);
+	const auto coords{Vec3::createCoordsSystem(sdir)};
+	ray.dir_ = sample::cosHemisphere(sdir, coords.first, coords.second, s_1, s_2);
 	ipdf = area_;
 	return color_;
 }
 
 Rgb SphereLight::emitSample(Vec3 &wo, LSample &s) const
 {
-	Vec3 sdir = sample::sphere(s.s_3_, s.s_4_);
+	Vec3 sdir{sample::sphere(s.s_3_, s.s_4_)};
 	s.sp_->p_ = center_ + radius_ * sdir;
 	s.sp_->n_ = s.sp_->ng_ = sdir;
-	Vec3 du, dv;
-	Vec3::createCs(sdir, du, dv);
-	wo = sample::cosHemisphere(sdir, du, dv, s.s_1_, s.s_2_);
+	const auto coords{Vec3::createCoordsSystem(sdir)};
+	wo = sample::cosHemisphere(sdir, coords.first, coords.second, s.s_1_, s.s_2_);
 	s.dir_pdf_ = std::abs(sdir * wo);
 	s.area_pdf_ = inv_area_ * math::num_pi;
 	s.flags_ = flags_;
 	return color_;
 }
 
-std::unique_ptr<Light> SphereLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * SphereLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Point3 from(0.0);
+	Point3 from{0.f, 0.f, 0.f};
 	Rgb color(1.0);
 	float power = 1.0;
 	float radius = 1.f;
@@ -186,7 +182,7 @@ std::unique_ptr<Light> SphereLight::factory(Logger &logger, ParamMap &params, co
 	params.getParam("with_diffuse", shoot_d);
 	params.getParam("photon_only", p_only);
 
-	auto light = std::unique_ptr<SphereLight>(new SphereLight(logger, from, radius, color, power, samples, light_enabled, cast_shadows));
+	auto light = new SphereLight(logger, from, radius, color, power, samples, light_enabled, cast_shadows);
 
 	light->object_name_ = object_name;
 	light->shoot_caustic_ = shoot_c;

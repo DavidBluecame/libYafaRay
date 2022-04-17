@@ -54,7 +54,7 @@ class MonteCarloIntegrator: public TiledIntegrator
 		MonteCarloIntegrator(RenderControl &render_control, Logger &logger);
 
 	protected:
-		virtual ~MonteCarloIntegrator() override;
+		~MonteCarloIntegrator() override;
 		/*! Estimates direct light from all sources in a mc fashion and completing MIS (Multiple Importance Sampling) for a given surface point */
 		Rgb estimateAllDirectLight(RandomGenerator &random_generator, ColorLayers *color_layers, bool chromatic_enabled, float wavelength, const SurfacePoint &sp, const Vec3 &wo, const RayDivision &ray_division, const PixelSamplingData &pixel_sampling_data) const;
 		/*! Like previous but for only one random light source for a given surface point */
@@ -72,8 +72,8 @@ class MonteCarloIntegrator: public TiledIntegrator
 		Rgb areaLightSampleMaterial(Halton &hal_2, Halton &hal_3, RandomGenerator &random_generator, ColorLayers *color_layers, bool chromatic_enabled, float wavelength, const Light *light, const Vec3 &wo, const SurfacePoint &sp, bool cast_shadows, unsigned int num_samples, float inv_num_samples) const;
 		/*! Creates and prepares the caustic photon map */
 		bool createCausticMap();
-		void causticWorker(unsigned int &total_photons_shot, int thread_id, int num_lights, const Pdf1D *light_power_d, const std::vector<const Light *> &caus_lights, int pb_step);
-		std::pair<Rgb, float> glossyReflectNoTransmit(RandomGenerator &random_generator, int thread_id, int ray_level, bool chromatic_enabled, float wavelength, const Ray &ray, const SurfacePoint &sp, const BsdfFlags &bsdfs, const Vec3 &wo, int additional_depth, const PixelSamplingData &pixel_sampling_data, const RayDivision &ray_division_new, const float s_1, const float s_2) const;
+		void causticWorker(unsigned int &total_photons_shot, int thread_id, const Pdf1D *light_power_d_caustic, const std::vector<const Light *> &lights_caustic, int pb_step);
+		std::pair<Rgb, float> glossyReflectNoTransmit(RandomGenerator &random_generator, int thread_id, int ray_level, bool chromatic_enabled, float wavelength, const Ray &ray, const SurfacePoint &sp, const BsdfFlags &bsdfs, const Vec3 &wo, int additional_depth, const PixelSamplingData &pixel_sampling_data, const RayDivision &ray_division_new, float s_1, float s_2) const;
 		std::pair<Rgb, float> glossyTransmit(RandomGenerator &random_generator, int thread_id, int ray_level, bool chromatic_enabled, float wavelength, const Ray &ray, const SurfacePoint &sp, const BsdfFlags &bsdfs, int additional_depth, const PixelSamplingData &pixel_sampling_data, const RayDivision &ray_division_new, const Rgb &transmit_col, float w, const Vec3 &dir) const;
 		std::pair<Rgb, float> glossyReflect(RandomGenerator &random_generator, int thread_id, int ray_level, bool chromatic_enabled, float wavelength, const Ray &ray, const SurfacePoint &sp, const BsdfFlags &bsdfs, int additional_depth, const PixelSamplingData &pixel_sampling_data, const RayDivision &ray_division_new, const Rgb &reflect_color, float w, const Vec3 &dir) const;
 		/*! Estimates caustic photons for a given surface point */
@@ -92,7 +92,7 @@ class MonteCarloIntegrator: public TiledIntegrator
 
 		int n_paths_; //! Number of samples for mc raytracing
 		int max_bounces_; //! Max. path depth for mc raytracing
-		std::vector<const Light *> lights_; //! An array containing all the scene lights
+		std::vector<const Light *> lights_; //! An array containing all the visible scene lights
 		std::unique_ptr<PhotonMap> caustic_map_;
 
 		static constexpr int initial_ray_samples_dispersive_ = 8;

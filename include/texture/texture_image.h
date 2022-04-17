@@ -34,7 +34,7 @@ class Format;
 class MipMapParams final
 {
 	public:
-		MipMapParams(float force_image_level) : force_image_level_(force_image_level) { }
+		explicit MipMapParams(float force_image_level) : force_image_level_(force_image_level) { }
 		MipMapParams(float dsdx, float dtdx, float dsdy, float dtdy) : ds_dx_(dsdx), dt_dx_(dtdx), ds_dy_(dsdy), dt_dy_(dtdy) { }
 
 		float force_image_level_ = 0.f;
@@ -60,19 +60,18 @@ class ImageTexture final : public Texture
 {
 	public:
 		enum class ClipMode : int { Extend, Clip, ClipCube, Repeat, Checker };
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		ImageTexture(Logger &logger, std::shared_ptr<Image> image);
-		virtual bool discrete() const override { return true; }
-		virtual bool isThreeD() const override { return false; }
-		virtual bool isNormalmap() const override { return normalmap_; }
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual Rgba getRawColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual void resolution(int &x, int &y, int &z) const override;
-		virtual void generateMipMaps() override;
+		bool discrete() const override { return true; }
+		bool isThreeD() const override { return false; }
+		bool isNormalmap() const override { return normalmap_; }
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		Rgba getRawColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		void resolution(int &x, int &y, int &z) const override;
+		void generateMipMaps() override;
 		void setCrop(float minx, float miny, float maxx, float maxy);
-		void findTextureInterpolationCoordinates(int &coord_0, int &coord_1, int &coord_2, int &coord_3, float &coord_decimal_part, float coord_float, int resolution, bool repeat, bool mirror) const;
 		Rgba noInterpolation(const Point3 &p, int mipmap_level = 0) const;
 		Rgba bilinearInterpolation(const Point3 &p, int mipmap_level = 0) const;
 		Rgba bicubicInterpolation(const Point3 &p, int mipmap_level = 0) const;
@@ -81,6 +80,7 @@ class ImageTexture final : public Texture
 		Rgba ewaEllipticCalculation(const Point3 &p, float ds_0, float dt_0, float ds_1, float dt_1, int mipmap_level = 0) const;
 		bool doMapping(Point3 &texp) const;
 		Rgba interpolateImage(const Point3 &p, const MipMapParams *mipmap_params) const;
+		static void findTextureInterpolationCoordinates(int &coord_0, int &coord_1, int &coord_2, int &coord_3, float &coord_decimal_part, float coord_float, int resolution, bool repeat, bool mirror);
 		static ImageTexture::ClipMode string2Cliptype(const std::string &clipname);
 
 		bool calc_alpha_, normalmap_;

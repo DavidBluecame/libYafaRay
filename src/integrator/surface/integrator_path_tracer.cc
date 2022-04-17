@@ -129,7 +129,7 @@ std::pair<Rgb, float> PathIntegrator::integrate(Ray &ray, RandomGenerator &rando
 	if(sp)
 	{
 		const BsdfFlags &mat_bsdfs = sp->mat_data_->bsdf_flags_;
-		const Vec3 wo = -ray.dir_;
+		const Vec3 wo{-ray.dir_};
 		additional_depth = std::max(additional_depth, sp->material_->getAdditionalDepth());
 
 		// contribution of light emitting surfaces
@@ -139,7 +139,7 @@ std::pair<Rgb, float> PathIntegrator::integrate(Ray &ray, RandomGenerator &rando
 			col += col_emit;
 			if(color_layers && color_layers->getFlags().hasAny(LayerDef::Flags::BasicLayers))
 			{
-				if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer += col_emit;
+				if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer += Rgba{col_emit};
 			}
 		}
 
@@ -169,7 +169,7 @@ std::pair<Rgb, float> PathIntegrator::integrate(Ray &ray, RandomGenerator &rando
 				Rgb throughput(1.0);
 				Rgb lcol, scol;
 				auto hit = std::unique_ptr<const SurfacePoint>(new SurfacePoint(*sp));
-				Vec3 pwo = wo;
+				Vec3 pwo{wo};
 				Ray p_ray;
 
 				const float wavelength_dispersive = chromatic_enabled ? sample::riS(offs) : 0.f;
@@ -200,7 +200,7 @@ std::pair<Rgb, float> PathIntegrator::integrate(Ray &ray, RandomGenerator &rando
 					lcol += col_emit;
 					if(color_layers && color_layers->getFlags().hasAny(LayerDef::Flags::BasicLayers))
 					{
-						if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer += col_emit;
+						if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer += Rgba{col_emit};
 					}
 				}
 
@@ -231,14 +231,7 @@ std::pair<Rgb, float> PathIntegrator::integrate(Ray &ray, RandomGenerator &rando
 					p_ray.tmax_ = -1.f;
 					p_ray.from_ = hit->p_;
 					auto intersect_result = accelerator_->intersect(p_ray, camera_);
-					if(!intersect_result.first) //hit background
-					{
-						if((caustic && background_ && background_->hasIbl() && background_->shootsCaustic()))
-						{
-							path_col += throughput * (*background_)(p_ray.dir_, true);
-						}
-						break;
-					}
+					if(!intersect_result.first) break; //hit background
 					std::swap(hit, intersect_result.first);
 					pwo = -p_ray.dir_;
 
@@ -267,7 +260,7 @@ std::pair<Rgb, float> PathIntegrator::integrate(Ray &ray, RandomGenerator &rando
 						lcol += col_tmp;
 						if(color_layers && color_layers->getFlags().hasAny(LayerDef::Flags::BasicLayers))
 						{
-							if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer += col_tmp;
+							if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer += Rgba{col_tmp};
 						}
 					}
 					path_col += lcol * throughput;
@@ -296,7 +289,7 @@ std::pair<Rgb, float> PathIntegrator::integrate(Ray &ray, RandomGenerator &rando
 	return {col, alpha};
 }
 
-std::unique_ptr<Integrator> PathIntegrator::factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control)
+Integrator * PathIntegrator::factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control)
 {
 	bool transp_shad = false, no_rec = false;
 	int shadow_depth = 5;
@@ -328,7 +321,7 @@ std::unique_ptr<Integrator> PathIntegrator::factory(Logger &logger, ParamMap &pa
 	params.getParam("AO_color", ao_col);
 	params.getParam("photon_maps_processing", photon_maps_processing_str);
 
-	auto inte = std::unique_ptr<PathIntegrator>(new PathIntegrator(render_control, logger, transp_shad, shadow_depth));
+	auto inte = new PathIntegrator(render_control, logger, transp_shad, shadow_depth);
 	if(params.getParam("caustic_type", c_method))
 	{
 		bool use_photons = false;

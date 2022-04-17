@@ -76,7 +76,7 @@ class ImageFilm final
 			AutoSaveParams auto_save_;
 		};
 
-		static std::unique_ptr<ImageFilm> factory(Logger &logger, const ParamMap &params, Scene *scene);
+		static ImageFilm *factory(Logger &logger, const ParamMap &params, Scene *scene);
 		/*! imageFilm_t Constructor */
 		ImageFilm(Logger &logger, int width, int height, int xstart, int ystart, int num_threads, RenderControl &render_control, const Layers &layers, const std::map<std::string, std::unique_ptr<ImageOutput>> &outputs, float filter_size = 1.0, FilterType filt = FilterType::Box, int t_size = 32, ImageSplitter::TilesOrderType tiles_order_type = ImageSplitter::Linear);
 		/*! Initialize imageFilm for new rendering, i.e. set pixels black etc */
@@ -120,7 +120,6 @@ class ImageFilm final
 		int getTotalPixels() const { return width_ * height_; };
 		void setAaNoiseParams(const AaNoiseParams &aa_noise_params) { aa_noise_params_ = aa_noise_params; };
 		/*! Methods for rendering the parameters badge; Note that FreeType lib is needed to render text */
-		float darkThresholdCurveInterpolate(float pixel_brightness);
 		int getWidth() const { return width_; }
 		int getHeight() const { return height_; }
 		int getCx0() const { return cx_0_; }
@@ -147,13 +146,12 @@ class ImageFilm final
 		void resetImagesAutoSaveTimer() { images_auto_save_params_.timer_ = 0.0; }
 		void resetFilmAutoSaveTimer() { film_load_save_.auto_save_.timer_ = 0.0; }
 
-		void generateDebugFacesEdges(int xstart, int width, int ystart, int height, bool drawborder, const EdgeToonParams &edge_params);
-		void generateToonAndDebugObjectEdges(int xstart, int width, int ystart, int height, bool drawborder, const EdgeToonParams &edge_params);
 		const ImageLayers *getImageLayers() const { return &film_image_layers_; }
 		const ImageLayers *getExportedImageLayers() const { return &exported_image_layers_; }
 		Timer * getTimer() { return &timer_; }
 
 		static std::string printRenderStats(const RenderControl &render_control, const Timer &timer, int width, int height);
+		static float darkThresholdCurveInterpolate(float pixel_brightness);
 
 	private:
 		void initLayersImages();

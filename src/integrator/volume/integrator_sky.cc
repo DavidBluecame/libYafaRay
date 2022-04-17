@@ -71,7 +71,7 @@ Rgb SkyIntegrator::skyTau(const Ray &ray) const
 {
 	//std::cout << " ray.from: " << ray.from << " ray.dir: " << ray.dir << " ray.tmax: " << ray.tmax << " t0: " << t0 << " t1: " << t1 << std::endl;
 	/*
-	if (ray.tmax < t0 && ! (ray.tmax < 0)) return Rgb(0.f);
+	if (ray.tmax < t0 && ! (ray.tmax < 0)) return {0.f};
 	if (ray.tmax < t1 && ! (ray.tmax < 0)) t1 = ray.tmax;
 	if (t0 < 0.f) t0 = 0.f;
 	*/
@@ -80,26 +80,26 @@ Rgb SkyIntegrator::skyTau(const Ray &ray) const
 	else dist = ray.tmax_;
 	if(dist < 0.f) dist = 1000.f;
 	const float s = dist;
-	const float cos_theta = ray.dir_.z_; //vector3d_t(0.f, 0.f, 1.f) * ray.dir;
-	const float h_0 = ray.from_.z_;
+	const float cos_theta = ray.dir_.z(); //vector3d_t(0.f, 0.f, 1.f) * ray.dir;
+	const float h_0 = ray.from_.z();
 	/*
 	float K = - sigma_t / (alpha * cos_theta);
 	float H = exp(-alpha * h0);
 	float u = exp(-alpha * (h0 + s * cos_theta));
 	tauVal = Rgba(K*(H-u));
 	*/
-	return sigma_t_ * math::exp(-alpha_ * h_0) * (1.f - math::exp(-alpha_ * cos_theta * s)) / (alpha_ * cos_theta);
+	return Rgb{sigma_t_ * math::exp(-alpha_ * h_0) * (1.f - math::exp(-alpha_ * cos_theta * s)) / (alpha_ * cos_theta)};
 	//std::cout << tauVal.energy() << " " << cos_theta << " " << dist << " " << ray.tmax << std::endl;
 	//return Rgba(exp(-result.getR()), exp(-result.getG()), exp(-result.getB()));
 }
 
 Rgb SkyIntegrator::skyTau(const Ray &ray, float beta, float alpha) const
 {
-	if(ray.tmax_ < 0.f) return {0.f};
+	if(ray.tmax_ < 0.f) return Rgb{0.f};
 	const float s = ray.tmax_ * scale_;
-	float cos_theta = ray.dir_.z_;
-	float h_0 = ray.from_.z_ * scale_;
-	return beta * math::exp(-alpha * h_0) * (1.f - math::exp(-alpha * cos_theta * s)) / (alpha * cos_theta);
+	float cos_theta = ray.dir_.z();
+	float h_0 = ray.from_.z() * scale_;
+	return Rgb{beta * math::exp(-alpha * h_0) * (1.f - math::exp(-alpha * cos_theta * s)) / (alpha * cos_theta)};
 	//tauVal = Rgba(-beta / (alpha * cos_theta) * ( exp(-alpha * (h0 + cos_theta * s)) - exp(-alpha*h0) ));
 }
 
@@ -113,7 +113,7 @@ Rgb SkyIntegrator::transmittance(RandomGenerator &random_generator, const Ray &r
 
 Rgb SkyIntegrator::integrate(RandomGenerator &random_generator, const Ray &ray, int additional_depth) const
 {
-	if(ray.tmax_ < 0.f) return {0.f};
+	if(ray.tmax_ < 0.f) return Rgb{0.f};
 	const float s = ray.tmax_ * scale_;
 	const int v_vec = 3;
 	const int u_vec = 8;
@@ -127,8 +127,8 @@ Rgb SkyIntegrator::integrate(RandomGenerator &random_generator, const Ray &ray, 
 			const float z = math::cos(theta);
 			const float x = math::sin(theta) * math::cos(phi);
 			const float y = math::sin(theta) * math::sin(phi);
-			const Vec3 w(x, y, z);
-			const Ray bgray(Point3(0, 0, 0), w, 0, 1, 0);
+			const Vec3 w{x, y, z};
+			const Ray bgray({0, 0, 0}, w, 0, 1, 0);
 			const Rgb l_s = background_ ? background_->eval(bgray.dir_) : Rgb(0.f);
 			const float b_r_angular = b_r_ * 3 / (2 * math::num_pi * 8) * (1.0f + (w * (-ray.dir_)) * (w * (-ray.dir_)));
 			const float k = 0.67f;
@@ -146,8 +146,8 @@ Rgb SkyIntegrator::integrate(RandomGenerator &random_generator, const Ray &ray, 
 
 	//std::cout << " S0_m: " << S0_m.energy() << std::endl;
 
-	const float cos_theta = ray.dir_.z_;
-	const float h_0 = ray.from_.z_ * scale_;
+	const float cos_theta = ray.dir_.z();
+	const float h_0 = ray.from_.z() * scale_;
 	const float step = step_size_ * scale_;
 	float pos = 0.f + random_generator() * step;
 	Rgb i_r {0.f}, i_m {0.f};
@@ -162,8 +162,8 @@ Rgb SkyIntegrator::integrate(RandomGenerator &random_generator, const Ray &ray, 
 		const float tr_m = math::exp(-tau_m.energy());
 		//if (Tr < 1e-3) // || u < 1e-3)
 		//	break;
-		i_r += tr_r * u_r * step;
-		i_m += tr_m * u_m * step;
+		i_r += Rgb{tr_r * u_r * step};
+		i_m += Rgb{tr_m * u_m * step};
 		//std::cout << /* tau_r.energy() << " " << Tr_r << " " <<  */ I_m.energy() << " " << Tr_m << " " << pos << " " << cos_theta << std::endl;
 		pos += step;
 	}
@@ -192,7 +192,7 @@ float SkyIntegrator::mieScatter(float theta)
 	return (1.f - ((theta - 80.f) / 100.f)) * 0.1644f + ((theta - 80.f) / 100.f) * 0.1;
 }
 
-std::unique_ptr<Integrator> SkyIntegrator::factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control)
+Integrator * SkyIntegrator::factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control)
 {
 	float s_size = 1.f;
 	float a = .5f;
@@ -202,7 +202,7 @@ std::unique_ptr<Integrator> SkyIntegrator::factory(Logger &logger, ParamMap &par
 	params.getParam("sigma_t", ss);
 	params.getParam("alpha", a);
 	params.getParam("turbidity", t);
-	return std::unique_ptr<Integrator>(new SkyIntegrator(logger, s_size, a, ss, t));
+	return new SkyIntegrator(logger, s_size, a, ss, t);
 }
 
 

@@ -34,7 +34,7 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Integrator> Integrator::factory(Logger &logger, ParamMap &params, Scene &scene)
+Integrator * Integrator::factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{

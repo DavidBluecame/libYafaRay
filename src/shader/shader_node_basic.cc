@@ -17,6 +17,8 @@
  */
 
 #include "shader/shader_node_basic.h"
+
+#include <cmath>
 #include "shader/shader_node_layer.h"
 #include "camera/camera.h"
 #include "common/param.h"
@@ -43,9 +45,9 @@ void TextureMapperNode::setup()
 		d_u_ = d_v_ = d_w_ = step;
 	}
 
-	p_du_ = Point3(d_u_, 0, 0);
-	p_dv_ = Point3(0, d_v_, 0);
-	p_dw_ = Point3(0, 0, d_w_);
+	p_du_ = {d_u_, 0.f, 0.f};
+	p_dv_ = {0.f, d_v_, 0.f};
+	p_dw_ = {0.f, 0.f, d_w_};
 
 	bump_str_ /= scale_.length();
 
@@ -57,27 +59,27 @@ void TextureMapperNode::setup()
 Point3 TextureMapperNode::tubeMap(const Point3 &p)
 {
 	Point3 res;
-	res.y_ = p.z_;
-	const float d = p.x_ * p.x_ + p.y_ * p.y_;
+	res.y() = p.z();
+	const float d = p.x() * p.x() + p.y() * p.y();
 	if(d > 0.f)
 	{
-		res.z_ = 1.f / math::sqrt(d);
-		res.x_ = -atan2(p.x_, p.y_) * math::div_1_by_pi;
+		res.z() = 1.f / math::sqrt(d);
+		res.x() = -std::atan2(p.x(), p.y()) * math::div_1_by_pi;
 	}
-	else res.x_ = res.z_ = 0.f;
+	else res.x() = res.z() = 0.f;
 	return res;
 }
 
 // Map the texture to a sphere
 Point3 TextureMapperNode::sphereMap(const Point3 &p)
 {
-	Point3 res(0.f);
-	const float d = p.x_ * p.x_ + p.y_ * p.y_ + p.z_ * p.z_;
+	Point3 res{0.f, 0.f, 0.f};
+	const float d = p.x() * p.x() + p.y() * p.y() + p.z() * p.z();
 	if(d > 0.f)
 	{
-		res.z_ = math::sqrt(d);
-		if((p.x_ != 0.f) && (p.y_ != 0.f)) res.x_ = -atan2(p.x_, p.y_) * math::div_1_by_pi;
-		res.y_ = 1.f - 2.f * (math::acos(p.z_ / res.z_) * math::div_1_by_pi);
+		res.z() = math::sqrt(d);
+		if((p.x() != 0.f) && (p.y() != 0.f)) res.x() = -std::atan2(p.x(), p.y()) * math::div_1_by_pi;
+		res.y() = 1.f - 2.f * (math::acos(p.z() / res.z()) * math::div_1_by_pi);
 	}
 	return res;
 }
@@ -89,8 +91,8 @@ Point3 TextureMapperNode::cubeMap(const Point3 &p, const Vec3 &n)
 	// int axis = std::abs(n.x) > std::abs(n.y) ? (std::abs(n.x) > std::abs(n.z) ? 0 : 2) : (std::abs(n.y) > std::abs(n.z) ? 1 : 2);
 	// no functionality changes, just more readable code
 	int axis;
-	if(std::abs(n.z_) >= std::abs(n.x_) && std::abs(n.z_) >= std::abs(n.y_)) axis = 2;
-	else if(std::abs(n.y_) >= std::abs(n.x_) && std::abs(n.y_) >= std::abs(n.z_)) axis = 1;
+	if(std::abs(n.z()) >= std::abs(n.x()) && std::abs(n.z()) >= std::abs(n.y())) axis = 2;
+	else if(std::abs(n.y()) >= std::abs(n.x()) && std::abs(n.y()) >= std::abs(n.z())) axis = 1;
 	else axis = 0;
 	return { p[ma[axis][0]], p[ma[axis][1]], p[ma[axis][2]] };
 }
@@ -103,18 +105,18 @@ Point3 TextureMapperNode::flatMap(const Point3 &p)
 
 Point3 TextureMapperNode::doMapping(const Point3 &p, const Vec3 &n) const
 {
-	Point3 texpt(p);
+	Point3 texpt{p};
 	// Texture coordinates standardized, if needed, to -1..1
 	switch(coords_)
 	{
-		case Uv: texpt = Point3(2.f * texpt.x_ - 1.f, 2.f * texpt.y_ - 1.f, texpt.z_); break;
+		case Uv: texpt = {2.f * texpt.x() - 1.f, 2.f * texpt.y() - 1.f, texpt.z()}; break;
 		default: break;
 	}
 	// Texture axis mapping
-	const std::array<float, 4> texmap { 0.f, texpt.x_, texpt.y_, texpt.z_ };
-	texpt.x_ = texmap[map_x_];
-	texpt.y_ = texmap[map_y_];
-	texpt.z_ = texmap[map_z_];
+	const std::array<float, 4> texmap {0.f, texpt.x(), texpt.y(), texpt.z() };
+	texpt.x() = texmap[map_x_];
+	texpt.y() = texmap[map_y_];
+	texpt.z() = texmap[map_z_];
 	// Texture coordinates mapping
 	switch(projection_)
 	{
@@ -146,7 +148,7 @@ void TextureMapperNode::getCoords(Point3 &texpt, Vec3 &ng, const SurfacePoint &s
 			{
 				Vec3 camx, camy, camz;
 				camera->getAxis(camx, camy, camz);
-				texpt = Point3(sp.n_ * camx, -sp.n_ * camy, 0);
+				texpt = {sp.n_ * camx, -sp.n_ * camy, 0.f};
 				ng = sp.ng_;
 			}
 			break;
@@ -163,23 +165,23 @@ void TextureMapperNode::getCoords(Point3 &texpt, Vec3 &ng, const SurfacePoint &s
 
 void TextureMapperNode::eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
 {
-	Point3 texpt(0.f);
+	Point3 texpt{0.f, 0.f, 0.f};
 	Vec3 ng(0.f);
 	std::unique_ptr<const MipMapParams> mip_map_params;
 
 	if((tex_->getInterpolationType() == InterpolationType::Trilinear || tex_->getInterpolationType() == InterpolationType::Ewa) && sp.differentials_)
 	{
 		getCoords(texpt, ng, sp, camera);
-		const Point3 texptorig = texpt;
+		const Point3 texptorig{texpt};
 		texpt = doMapping(texptorig, ng);
 		if(coords_ == Uv && sp.has_uv_)
 		{
 			float du_dx = 0.f, dv_dx = 0.f;
 			float du_dy = 0.f, dv_dy = 0.f;
 			sp.getUVdifferentials(du_dx, dv_dx, du_dy, dv_dy);
-			const Point3 texpt_diffx = 1.0e+2f * (doMapping(texptorig + 1.0e-2f * Point3(du_dx, dv_dx, 0.f), ng) - texpt);
-			const Point3 texpt_diffy = 1.0e+2f * (doMapping(texptorig + 1.0e-2f * Point3(du_dy, dv_dy, 0.f), ng) - texpt);
-			mip_map_params = std::unique_ptr<const MipMapParams>(new MipMapParams(texpt_diffx.x_, texpt_diffx.y_, texpt_diffy.x_, texpt_diffy.y_));
+			const Point3 texpt_diffx{1.0e+2f * (doMapping(texptorig + 1.0e-2f * Point3{du_dx, dv_dx, 0.f}, ng) - texpt)};
+			const Point3 texpt_diffy{1.0e+2f * (doMapping(texptorig + 1.0e-2f * Point3{du_dy, dv_dy, 0.f}, ng) - texpt)};
+			mip_map_params = std::unique_ptr<const MipMapParams>(new MipMapParams(texpt_diffx.x(), texpt_diffx.y(), texpt_diffy.x(), texpt_diffy.y()));
 		}
 	}
 	else
@@ -195,7 +197,7 @@ void TextureMapperNode::eval(NodeTreeData &node_tree_data, const SurfacePoint &s
 
 void TextureMapperNode::evalDerivative(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
 {
-	Point3 texpt(0.f);
+	Point3 texpt{0.f, 0.f, 0.f};
 	Vec3 ng(0.f);
 	float du = 0.0f, dv = 0.0f;
 
@@ -212,10 +214,10 @@ void TextureMapperNode::evalDerivative(NodeTreeData &node_tree_data, const Surfa
 			const Rgba color = tex_->getRawColor(texpt);
 
 			// Assign normal map RGB colors to vector norm
-			norm.x_ = color.getR();
-			norm.y_ = color.getG();
-			norm.z_ = color.getB();
-			norm = (2.f * norm) - 1.f;
+			norm.x() = color.getR();
+			norm.y() = color.getG();
+			norm.z() = color.getB();
+			norm = (2.f * norm) - Vec3{1.f}; //FIXME DAVID: does the Vec3 portion make sense?
 
 			// Convert norm into shading space
 			du = norm * sp.ds_du_;
@@ -223,29 +225,29 @@ void TextureMapperNode::evalDerivative(NodeTreeData &node_tree_data, const Surfa
 		}
 		else
 		{
-			const Point3 i_0 = texpt - p_du_;
-			const Point3 i_1 = texpt + p_du_;
-			const Point3 j_0 = texpt - p_dv_;
-			const Point3 j_1 = texpt + p_dv_;
+			const Point3 i_0{texpt - p_du_};
+			const Point3 i_1{texpt + p_du_};
+			const Point3 j_0{texpt - p_dv_};
+			const Point3 j_1{texpt + p_dv_};
 			const float dfdu = (tex_->getFloat(i_0) - tex_->getFloat(i_1)) / d_u_;
 			const float dfdv = (tex_->getFloat(j_0) - tex_->getFloat(j_1)) / d_v_;
 
 			// now we got the derivative in UV-space, but need it in shading space:
-			Vec3 vec_u = sp.ds_du_;
-			Vec3 vec_v = sp.ds_dv_;
-			vec_u.z_ = dfdu;
-			vec_v.z_ = dfdv;
+			Vec3 vec_u{sp.ds_du_};
+			Vec3 vec_v{sp.ds_dv_};
+			vec_u.z() = dfdu;
+			vec_v.z() = dfdv;
 			// now we have two vectors NU/NV/df; Solve plane equation to get 1/0/df and 0/1/df (i.e. dNUdf and dNVdf)
 			norm = vec_u ^ vec_v;
 		}
 
 		norm.normalize();
 
-		if(std::abs(norm.z_) > 1e-30f)
+		if(std::abs(norm.z()) > 1e-30f)
 		{
-			const float nf = 1.f / norm.z_ * bump_str_; // normalizes z to 1, why?
-			du = norm.x_ * nf;
-			dv = norm.y_ * nf;
+			const float nf = 1.f / norm.z() * bump_str_; // normalizes z to 1, why?
+			du = norm.x() * nf;
+			dv = norm.y() * nf;
 		}
 		else du = dv = 0.f;
 	}
@@ -260,7 +262,7 @@ void TextureMapperNode::evalDerivative(NodeTreeData &node_tree_data, const Surfa
 
 			// Assign normal map RGB colors to vector norm
 			Vec3 norm { color.getR(), color.getG(), color.getB() };
-			norm = (2.f * norm) - 1.f;
+			norm = (2.f * norm) - Vec3{1.f}; //FIXME DAVID: does the Vec3 portion make sense?
 
 			// Convert norm into shading space
 			du = norm * sp.ds_du_;
@@ -268,11 +270,11 @@ void TextureMapperNode::evalDerivative(NodeTreeData &node_tree_data, const Surfa
 
 			norm.normalize();
 
-			if(std::abs(norm.z_) > 1e-30f)
+			if(std::abs(norm.z()) > 1e-30f)
 			{
-				const float nf = 1.0 / norm.z_ * bump_str_; // normalizes z to 1, why?
-				du = norm.x_ * nf;
-				dv = norm.y_ * nf;
+				const float nf = 1.0 / norm.z() * bump_str_; // normalizes z to 1, why?
+				du = norm.x() * nf;
+				dv = norm.y() * nf;
 			}
 			else du = dv = 0.f;
 		}
@@ -280,10 +282,10 @@ void TextureMapperNode::evalDerivative(NodeTreeData &node_tree_data, const Surfa
 		{
 			// no uv coords -> procedurals usually, this mapping only depends on NU/NV which is fairly arbitrary
 			// weird things may happen when objects are rotated, i.e. incorrect bump change
-			const Point3 i_0 = doMapping(texpt - d_u_ * sp.nu_, ng);
-			const Point3 i_1 = doMapping(texpt + d_u_ * sp.nu_, ng);
-			const Point3 j_0 = doMapping(texpt - d_v_ * sp.nv_, ng);
-			const Point3 j_1 = doMapping(texpt + d_v_ * sp.nv_, ng);
+			const Point3 i_0{doMapping(texpt - d_u_ * sp.nu_, ng)};
+			const Point3 i_1{doMapping(texpt + d_u_ * sp.nu_, ng)};
+			const Point3 j_0{doMapping(texpt - d_v_ * sp.nv_, ng)};
+			const Point3 j_1{doMapping(texpt + d_v_ * sp.nv_, ng)};
 
 			du = (tex_->getFloat(i_0) - tex_->getFloat(i_1)) / d_u_;
 			dv = (tex_->getFloat(j_0) - tex_->getFloat(j_1)) / d_v_;
@@ -301,7 +303,7 @@ void TextureMapperNode::evalDerivative(NodeTreeData &node_tree_data, const Surfa
 	node_tree_data[getId()] = NodeResult(Rgba(du, dv, 0.f, 0.f), 0.f);
 }
 
-std::unique_ptr<ShaderNode> TextureMapperNode::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+ShaderNode * TextureMapperNode::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	const Texture *tex = nullptr;
 	std::string texname, option;
@@ -309,8 +311,8 @@ std::unique_ptr<ShaderNode> TextureMapperNode::factory(Logger &logger, const Par
 	Projection projection = Plain;
 	float bump_str = 1.f;
 	bool scalar = true;
-	int map[3] = { 1, 2, 3 };
-	Point3 offset(0.f), scale(1.f);
+	int map[3] = {1, 2, 3 };
+	Point3 offset{0.f, 0.f, 0.f}, scale{1.f, 1.f, 1.f};
 	Matrix4 mtx(1);
 	if(!params.getParam("texture", texname))
 	{
@@ -323,7 +325,7 @@ std::unique_ptr<ShaderNode> TextureMapperNode::factory(Logger &logger, const Par
 		logger.logError("TextureMapper: texture '", texname, "' does not exist!");
 		return nullptr;
 	}
-	auto tm = std::unique_ptr<TextureMapperNode>(new TextureMapperNode(tex));
+	auto tm = new TextureMapperNode(tex);
 	if(params.getParam("texco", option))
 	{
 		if(option == "uv") tc = Uv;
@@ -352,14 +354,14 @@ std::unique_ptr<ShaderNode> TextureMapperNode::factory(Logger &logger, const Par
 	params.getParam("proj_x", map[0]);
 	params.getParam("proj_y", map[1]);
 	params.getParam("proj_z", map[2]);
-	for(int i = 0; i < 3; ++i) map[i] = std::min(3, std::max(0, map[i]));
+	for(int &map_entry : map) map_entry = std::min(3, std::max(0, map_entry));
 	tm->coords_ = tc;
 	tm->projection_ = projection;
 	tm->map_x_ = map[0];
 	tm->map_y_ = map[1];
 	tm->map_z_ = map[2];
-	tm->scale_ = Vec3(scale);
-	tm->offset_ = Vec3(2 * offset);	// Offset need to be doubled due to -1..1 texture standardized wich results in a 2 wide width/height
+	tm->scale_ = scale;
+	tm->offset_ = 2 * offset;	// Offset need to be doubled due to -1..1 texture standardized wich results in a 2 wide width/height
 	tm->do_scalar_ = scalar;
 	tm->bump_str_ = bump_str;
 	tm->mtx_ = mtx;
@@ -376,7 +378,7 @@ void ValueNode::eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const
 	node_tree_data[getId()] = NodeResult(color_, value_);
 }
 
-std::unique_ptr<ShaderNode> ValueNode::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+ShaderNode * ValueNode::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Rgb col(1.f);
 	float alpha = 1.f;
@@ -384,7 +386,7 @@ std::unique_ptr<ShaderNode> ValueNode::factory(Logger &logger, const ParamMap &p
 	params.getParam("color", col);
 	params.getParam("alpha", alpha);
 	params.getParam("scalar", val);
-	return std::unique_ptr<ShaderNode>(new ValueNode(Rgba(col, alpha), val));
+	return new ValueNode(Rgba(col, alpha), val);
 }
 
 /* ==========================================
@@ -511,7 +513,7 @@ void MixNode::getInputs(const NodeTreeData &node_tree_data, Rgba &cin_1, Rgba &c
 class AddNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
@@ -526,7 +528,7 @@ class AddNode: public MixNode
 class MultNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_1, f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
@@ -542,7 +544,7 @@ class MultNode: public MixNode
 class SubNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
@@ -557,14 +559,14 @@ class SubNode: public MixNode
 class ScreenNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_1, f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
 			getInputs(node_tree_data, cin_1, cin_2, fin_1, fin_2, f_2);
 			f_1 = 1.f - f_2;
 
-			const Rgba color { Rgba(1.f) - (Rgba(f_1) + f_2 * (1.f - cin_2)) * (1.f - cin_1) };
+			const Rgba color { Rgba{1.f} - (Rgba{f_1} + f_2 * (Rgba{1.f} - cin_2)) * (Rgba{1.f} - cin_1) };
 			const float scalar = 1.f - (f_1 + f_2 * (1.f - fin_2)) * (1.f - fin_1);
 			node_tree_data[getId()] = NodeResult(color, scalar);
 		}
@@ -573,7 +575,7 @@ class ScreenNode: public MixNode
 class DiffNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_1, f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
@@ -592,7 +594,7 @@ class DiffNode: public MixNode
 class DarkNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
@@ -612,7 +614,7 @@ class DarkNode: public MixNode
 class LightNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
@@ -632,7 +634,7 @@ class LightNode: public MixNode
 class OverlayNode: public MixNode
 {
 	public:
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override
 		{
 			float f_1, f_2, fin_1, fin_2;
 			Rgba cin_1, cin_2;
@@ -651,24 +653,24 @@ class OverlayNode: public MixNode
 };
 
 
-std::unique_ptr<ShaderNode> MixNode::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+ShaderNode * MixNode::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	float cfactor = 0.5f;
 	std::string blend_mode;
 	params.getParam("cfactor", cfactor);
 	params.getParam("blend_mode", blend_mode);
 
-	if(blend_mode == "add") return std::unique_ptr<ShaderNode>(new AddNode());
-	else if(blend_mode == "multiply") return std::unique_ptr<ShaderNode>(new MultNode());
-	else if(blend_mode == "subtract") return std::unique_ptr<ShaderNode>(new SubNode());
-	else if(blend_mode == "screen") return std::unique_ptr<ShaderNode>(new ScreenNode());
-	//else if(blend_mode == "divide") return std::unique_ptr<ShaderNode>(new DivNode()); //FIXME Why isn't there a DivNode?
-	else if(blend_mode == "difference") return std::unique_ptr<ShaderNode>(new DiffNode());
-	else if(blend_mode == "darken") return std::unique_ptr<ShaderNode>(new DarkNode());
-	else if(blend_mode == "lighten") return std::unique_ptr<ShaderNode>(new LightNode());
-	else if(blend_mode == "overlay") return std::unique_ptr<ShaderNode>(new OverlayNode());
+	if(blend_mode == "add") return new AddNode();
+	else if(blend_mode == "multiply") return new MultNode();
+	else if(blend_mode == "subtract") return new SubNode();
+	else if(blend_mode == "screen") return new ScreenNode();
+	//else if(blend_mode == "divide") return new DivNode(); //FIXME Why isn't there a DivNode?
+	else if(blend_mode == "difference") return new DiffNode();
+	else if(blend_mode == "darken") return new DarkNode();
+	else if(blend_mode == "lighten") return new LightNode();
+	else if(blend_mode == "overlay") return new OverlayNode();
 	//else if(blend_mode == "mix")
-	else return std::unique_ptr<ShaderNode>(new MixNode(cfactor));
+	else return new MixNode(cfactor);
 }
 
 END_YAFARAY

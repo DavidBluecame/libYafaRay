@@ -26,21 +26,14 @@
 
 BEGIN_YAFARAY
 
-GradientBackground::GradientBackground(Logger &logger, Rgb gzcol, Rgb ghcol, Rgb szcol, Rgb shcol, bool ibl, bool with_caustic):
+GradientBackground::GradientBackground(Logger &logger, const Rgb &gzcol, const Rgb &ghcol, const Rgb &szcol, const Rgb &shcol) :
 		Background(logger), gzenith_(gzcol), ghoriz_(ghcol), szenith_(szcol), shoriz_(shcol)
 {
-	with_ibl_ = ibl;
-	shoot_caustic_ = with_caustic;
 }
 
-Rgb GradientBackground::operator()(const Vec3 &dir, bool from_postprocessed) const
+Rgb GradientBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
 {
-	return eval(dir);
-}
-
-Rgb GradientBackground::eval(const Vec3 &dir, bool from_postprocessed) const
-{
-	float blend = dir.z_;
+	float blend = dir.z();
 	Rgb color;
 	if(blend >= 0.f) color = blend * szenith_ + (1.f - blend) * shoriz_;
 	else
@@ -52,7 +45,7 @@ Rgb GradientBackground::eval(const Vec3 &dir, bool from_postprocessed) const
 	return color;
 }
 
-std::unique_ptr<Background> GradientBackground::factory(Logger &logger, ParamMap &params, Scene &scene)
+const Background * GradientBackground::factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Rgb gzenith, ghoriz, szenith(0.4f, 0.5f, 1.f), shoriz(1.f);
 	float p = 1.0;
@@ -75,7 +68,7 @@ std::unique_ptr<Background> GradientBackground::factory(Logger &logger, ParamMap
 	params.getParam("with_caustic", caus);
 	params.getParam("with_diffuse", diff);
 
-	auto grad_bg = std::unique_ptr<GradientBackground>(new GradientBackground(logger, gzenith * p, ghoriz * p, szenith * p, shoriz * p, bgl, true));
+	auto grad_bg = new GradientBackground(logger, gzenith * p, ghoriz * p, szenith * p, shoriz * p);
 
 	if(bgl)
 	{
@@ -87,7 +80,7 @@ std::unique_ptr<Background> GradientBackground::factory(Logger &logger, ParamMap
 		bgp["cast_shadows"] = cast_shadows;
 
 		Light *bglight = scene.createLight("GradientBackground_bgLight", bgp);
-		bglight->setBackground(grad_bg.get());
+		bglight->setBackground(grad_bg);
 	}
 
 	return grad_bg;

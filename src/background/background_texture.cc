@@ -19,8 +19,7 @@
  */
 
 #include "background/background_texture.h"
-#include "common/logger.h"
-#include "texture/texture.h"
+#include "texture/texture_image.h"
 #include "common/param.h"
 #include "scene/scene.h"
 #include "light/light.h"
@@ -28,20 +27,17 @@
 
 BEGIN_YAFARAY
 
-TextureBackground::TextureBackground(Logger &logger, const Texture *texture, Projection proj, float bpower, float rot, bool ibl, float ibl_blur, bool with_caustic):
+TextureBackground::TextureBackground(Logger &logger, const Texture *texture, Projection proj, float bpower, float rot, float ibl_blur) :
 		Background(logger), tex_(texture), project_(proj), power_(bpower), ibl_blur_mipmap_level_(math::pow(ibl_blur, 2.f))
 {
-	with_ibl_ = ibl;
-	shoot_caustic_ = with_caustic;
-
 	rotation_ = 2.f * rot / 360.f;
 	sin_r_ = math::sin(math::num_pi * rotation_);
 	cos_r_ = math::cos(math::num_pi * rotation_);
-}
-
-Rgb TextureBackground::operator()(const Vec3 &dir, bool use_ibl_blur) const
-{
-	return eval(dir, use_ibl_blur);
+	if(ibl_blur > 0.f)
+	{
+		with_ibl_blur_ = true;
+		ibl_blur_mipmap_level_ = ibl_blur * ibl_blur;
+	}
 }
 
 Rgb TextureBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
@@ -50,15 +46,15 @@ Rgb TextureBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
 	if(project_ == Angular)
 	{
 		const Point3 p {
-				dir.x_ * cos_r_ + dir.y_ * sin_r_,
-				dir.x_ * -sin_r_ + dir.y_ * cos_r_,
-				dir.z_
+				dir.x() * cos_r_ + dir.y() * sin_r_,
+				dir.x() * -sin_r_ + dir.y() * cos_r_,
+				dir.z()
 		};
 		Texture::angMap(p, u, v);
 	}
 	else
 	{
-		Texture::sphereMap(dir, u, v); // This returns u,v in 0,1 range (useful for bgLight_t)
+		Texture::sphereMap(static_cast<Point3>(dir), u, v); // This returns u,v in 0,1 range (useful for bgLight_t)
 		// Put u,v in -1,1 range for mapping
 		u = 2.f * u - 1.f;
 		v = 2.f * v - 1.f;
@@ -66,7 +62,11 @@ Rgb TextureBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
 		if(u > 1.f) u -= 2.f;
 	}
 	Rgb ret;
-	if(use_ibl_blur) ret = tex_->getColor({u, v, 0.f}); //FIXME!
+	if(with_ibl_blur_ && use_ibl_blur)
+	{
+		const MipMapParams mip_map_params {ibl_blur_mipmap_level_};
+		ret = tex_->getColor({u, v, 0.f}, &mip_map_params);
+	}
 	else ret = tex_->getColor({u, v, 0.f});
 
 	const float min_component = 1.0e-5f;
@@ -76,9 +76,8 @@ Rgb TextureBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
 	return power_ * ret;
 }
 
-std::unique_ptr<Background> TextureBackground::factory(Logger &logger, ParamMap &params, Scene &scene)
+const Background * TextureBackground::factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Texture *tex = nullptr;
 	std::string texname;
 	std::string mapping;
 	Projection pr = Spherical;
@@ -96,7 +95,8 @@ std::unique_ptr<Background> TextureBackground::factory(Logger &logger, ParamMap 
 		logger.logError("TextureBackground: No texture given for texture background!");
 		return nullptr;
 	}
-	tex = scene.getTexture(texname);
+
+	Texture *tex = scene.getTexture(texname);
 	if(!tex)
 	{
 		logger.logError("TextureBackground: Texture '", texname, "' for textureback not existant!");
@@ -116,7 +116,7 @@ std::unique_ptr<Background> TextureBackground::factory(Logger &logger, ParamMap 
 	params.getParam("with_diffuse", diffuse);
 	params.getParam("cast_shadows", cast_shadows);
 
-	auto tex_bg = std::unique_ptr<TextureBackground>(new TextureBackground(logger, tex, pr, power, rot, ibl, ibl_blur, caust));
+	auto tex_bg = new TextureBackground(logger, tex, pr, power, rot, ibl_blur);
 
 	if(ibl)
 	{
@@ -137,7 +137,7 @@ std::unique_ptr<Background> TextureBackground::factory(Logger &logger, ParamMap 
 
 		Light *bglight = scene.createLight("textureBackground_bgLight", bgp);
 
-		bglight->setBackground(tex_bg.get());
+		bglight->setBackground(tex_bg);
 
 		if(ibl_clamp_sampling > 0.f)
 		{

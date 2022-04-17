@@ -35,8 +35,8 @@ BEGIN_YAFARAY
 class Pdf1D final
 {
 	public:
-		Pdf1D(const std::vector<float> &function) : function_(function) { init(); }
-		Pdf1D(std::vector<float> &&function) : function_(std::move(function)) { init(); }
+		explicit Pdf1D(const std::vector<float> &function) : function_(function) { init(); }
+		explicit Pdf1D(std::vector<float> &&function) : function_(std::move(function)) { init(); }
 		size_t size() const { return function_.size(); }
 		float invSize() const { return inv_size_; }
 		float integral() const { return integral_; }
@@ -51,7 +51,7 @@ class Pdf1D final
 
 	private:
 		void init();
-		std::pair<float, std::vector<float>> cumulateStep1DDf(const std::vector<float> &function);
+		static std::pair<float, std::vector<float>> cumulateStep1DDf(const std::vector<float> &function);
 		const std::vector<float> function_;
 		std::vector<float> cdf_;
 		float integral_, inv_integral_, inv_size_;
@@ -75,7 +75,7 @@ inline std::pair<float, std::vector<float>> Pdf1D::cumulateStep1DDf(const std::v
 		c += static_cast<double>(function[i]) * delta;
 		cdf[i] = static_cast<float>(c);
 	}
-	const float integral = static_cast<float>(c);// * delta;
+	const auto integral = static_cast<float>(c);// * delta;
 	for(auto &cdf_entry : cdf) cdf_entry /= integral;
 	return {integral, cdf};
 }

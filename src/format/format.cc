@@ -37,7 +37,7 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Format> Format::factory(Logger &logger, ParamMap &params)
+Format * Format::factory(Logger &logger, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
@@ -49,30 +49,28 @@ std::unique_ptr<Format> Format::factory(Logger &logger, ParamMap &params)
 	params.getParam("type", type);
 	type = string::toLower(type);
 
-	if(type == "tga" || type == "tpic") return TgaFormat::factory(logger, params);
-	else if(type == "hdr" || type == "pic") return HdrFormat::factory(logger, params);
+	if(type == "tga" || type == "tpic") return new TgaFormat(logger);
+	else if(type == "hdr" || type == "pic") return new HdrFormat(logger);
 #ifdef HAVE_OPENEXR
-	else if(type == "exr") return ExrFormat::factory(logger, params);
+	else if(type == "exr") return new ExrFormat(logger);
 #endif // HAVE_OPENEXR
 #ifdef HAVE_JPEG
-	else if(type == "jpg" || type == "jpeg") return JpgFormat::factory(logger, params);
+	else if(type == "jpg" || type == "jpeg") return new JpgFormat(logger);
 #endif // HAVE_JPEG
 #ifdef HAVE_PNG
-	else if(type == "png") return PngFormat::factory(logger, params);
+	else if(type == "png") return new PngFormat(logger);
 #endif // HAVE_PNG
 #ifdef HAVE_TIFF
-	else if(type == "tif" || type == "tiff") return TifFormat::factory(logger, params);
+	else if(type == "tif" || type == "tiff") return new TifFormat(logger);
 #endif // HAVE_TIFF
 	else
 	{
-		std::string name;
-		params.getParam("name", name);
 		logger.logError("Cannot process file, libYafaRay has not been built with support for image file format '" + type + "'");
 		return nullptr;
 	}
 }
 
-std::unique_ptr<Image> Format::loadFromMemory(const uint8_t *data, size_t size, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
+Image * Format::loadFromMemory(const uint8_t *data, size_t size, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
 {
 	return nullptr;
 }

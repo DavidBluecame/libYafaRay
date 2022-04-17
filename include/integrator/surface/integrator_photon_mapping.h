@@ -28,7 +28,7 @@ BEGIN_YAFARAY
 
 struct PreGatherData final
 {
-	PreGatherData(PhotonMap *dm): diffuse_map_(dm), fetched_(0) {}
+	explicit PreGatherData(PhotonMap *dm): diffuse_map_(dm), fetched_(0) {}
 	PhotonMap *diffuse_map_;
 
 	std::vector<RadData> rad_points_;
@@ -41,20 +41,20 @@ struct PreGatherData final
 class PhotonIntegrator final : public MonteCarloIntegrator
 {
 	public:
-		static std::unique_ptr<Integrator> factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control);
+		static Integrator *factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control);
 
 	private:
 		PhotonIntegrator(RenderControl &render_control, Logger &logger, unsigned int d_photons, unsigned int c_photons, bool transp_shad = false, int shadow_depth = 4, float ds_rad = 0.1f, float c_rad = 0.01f);
-		virtual std::string getShortName() const override { return "PM"; }
-		virtual std::string getName() const override { return "PhotonMap"; }
-		virtual bool preprocess(ImageFilm *image_film, const RenderView *render_view, const Scene &scene) override;
-		virtual std::pair<Rgb, float> integrate(Ray &ray, RandomGenerator &random_generator, ColorLayers *color_layers, int thread_id, int ray_level, bool chromatic_enabled, float wavelength, int additional_depth, const RayDivision &ray_division, const PixelSamplingData &pixel_sampling_data) const override;
-		void preGatherWorker(PreGatherData *gdata, float ds_rad, int n_search);
-		void diffuseWorker(PreGatherData &pgdat, unsigned int &total_photons_shot, int thread_id, int num_d_lights, const Pdf1D *light_power_d, const std::vector<const Light *> &tmplights, int pb_step);
-		void photonMapKdTreeWorker(PhotonMap *photon_map);
+		std::string getShortName() const override { return "PM"; }
+		std::string getName() const override { return "PhotonMap"; }
+		bool preprocess(ImageFilm *image_film, const RenderView *render_view, const Scene &scene) override;
+		std::pair<Rgb, float> integrate(Ray &ray, RandomGenerator &random_generator, ColorLayers *color_layers, int thread_id, int ray_level, bool chromatic_enabled, float wavelength, int additional_depth, const RayDivision &ray_division, const PixelSamplingData &pixel_sampling_data) const override;
+		void diffuseWorker(PreGatherData &pgdat, unsigned int &total_photons_shot, int thread_id, const Pdf1D *light_power_d, const std::vector<const Light *> &lights_diffuse, int pb_step);
 		Rgb finalGathering(RandomGenerator &random_generator, int thread_id, bool chromatic_enabled, float wavelength, const SurfacePoint &sp, const Vec3 &wo, const RayDivision &ray_division, const PixelSamplingData &pixel_sampling_data) const;
 		void enableCaustics(const bool caustics) { use_photon_caustics_ = caustics; }
 		void enableDiffuse(const bool diffuse) { use_photon_diffuse_ = diffuse; }
+		static void preGatherWorker(PreGatherData *gdata, float ds_rad, int n_search);
+		static void photonMapKdTreeWorker(PhotonMap *photon_map);
 
 		bool use_photon_diffuse_; //!< enable/disable diffuse photon processing
 		bool final_gather_, show_map_;

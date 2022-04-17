@@ -22,6 +22,7 @@
 #include "sampler/sample.h"
 #include "common/param.h"
 #include "scene/scene.h"
+#include <limits>
 
 BEGIN_YAFARAY
 
@@ -32,7 +33,7 @@ SunLight::SunLight(Logger &logger, Vec3 dir, const Rgb &col, float inte, float a
 	cast_shadows_ = b_cast_shadows;
 	color_ = col * inte;
 	direction_.normalize();
-	Vec3::createCs(dir, du_, dv_);
+	std::tie(du_, dv_) = Vec3::createCoordsSystem(dir);
 	if(angle > 80.f) angle = 80.f;
 	cos_angle_ = math::cos(math::degToRad(angle));
 	invpdf_ = (math::mult_pi_by_2 * (1.f - cos_angle_));
@@ -80,7 +81,7 @@ Rgb SunLight::emitPhoton(float s_1, float s_2, float s_3, float s_4, Ray &ray, f
 	float u, v;
 	Vec3::shirleyDisk(s_3, s_4, u, v);
 
-	Vec3 ldir = sample::cone(direction_, du_, dv_, cos_angle_, s_3, s_4);
+	Vec3 ldir{sample::cone(direction_, du_, dv_, cos_angle_, s_3, s_4)};
 	Vec3 du_2, dv_2;
 
 	sample::minRot(direction_, du_, ldir, du_2, dv_2);
@@ -93,9 +94,9 @@ Rgb SunLight::emitPhoton(float s_1, float s_2, float s_3, float s_4, Ray &ray, f
 }
 
 
-std::unique_ptr<Light> SunLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * SunLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Point3 dir(0.0, 0.0, 1.0);
+	Point3 dir{0.f, 0.f, 1.f};
 	Rgb color(1.0);
 	float power = 1.0;
 	float angle = 0.27; //angular (half-)size of the real sun;
@@ -117,7 +118,7 @@ std::unique_ptr<Light> SunLight::factory(Logger &logger, ParamMap &params, const
 	params.getParam("with_diffuse", shoot_d);
 	params.getParam("photon_only", p_only);
 
-	auto light = std::unique_ptr<SunLight>(new SunLight(logger, Vec3(dir.x_, dir.y_, dir.z_), color, power, angle, samples, light_enabled, cast_shadows));
+	auto light = new SunLight(logger, dir, color, power, angle, samples, light_enabled, cast_shadows);
 
 	light->shoot_caustic_ = shoot_c;
 	light->shoot_diffuse_ = shoot_d;

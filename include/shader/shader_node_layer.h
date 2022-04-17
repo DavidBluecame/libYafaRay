@@ -31,10 +31,10 @@ class LayerNode final : public ShaderNode
 		struct Flags : public yafaray::Flags
 		{
 			Flags() = default;
-			Flags(unsigned int flags) : yafaray::Flags(flags) { }
+			Flags(unsigned int flags) : yafaray::Flags(flags) { } // NOLINT(google-explicit-constructor)
 			enum Enum : unsigned int { None = 0, RgbToInt = 1 << 0, Stencil = 1 << 1, Negative = 1 << 2, AlphaMix = 1 << 3 };
 		};
-		static std::unique_ptr<ShaderNode> factory(Logger &logger, const ParamMap &params, const Scene &scene);
+		static ShaderNode *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		enum class BlendMode { Mix, Add, Mult, Sub, Screen, Div, Diff, Dark, Light };
@@ -42,11 +42,11 @@ class LayerNode final : public ShaderNode
 		static float textureValueBlend(float tex, float out, float fact, float facg, const BlendMode &blend_mode, bool flip = false);
 
 		LayerNode(const Flags &flags, float col_fac, float var_fac, float def_val, const Rgba &def_col, const BlendMode &blend_mode);
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
-		virtual void evalDerivative(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
-		virtual bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override;
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
+		void evalDerivative(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
+		bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override;
 		//virtual void getDerivative(const surfacePoint_t &sp, float &du, float &dv) const;
-		virtual std::vector<const ShaderNode *> getDependencies() const override;
+		std::vector<const ShaderNode *> getDependencies() const override;
 
 		const ShaderNode *input_ = nullptr, *upper_layer_ = nullptr;
 		Flags flags_;

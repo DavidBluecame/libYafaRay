@@ -26,10 +26,6 @@
 #include <string>
 #include <memory>
 
-#if HAVE_FREETYPE
-	struct FT_Bitmap_;
-#endif
-
 BEGIN_YAFARAY
 
 class Rgba;
@@ -41,7 +37,7 @@ class Logger;
 class Badge
 {
 	public:
-		Badge(Logger &logger) : logger_(logger) { }
+		explicit Badge(Logger &logger) : logger_(logger) { }
 		void setParams(const ParamMap &params);
 		enum class Position : int { None, Top, Bottom };
 		Position getPosition() const { return position_; }
@@ -71,12 +67,9 @@ class Badge
 		void setIconPath(const std::string &icon_path) { icon_path_ = icon_path; }
 
 		std::string print(const std::string &denoise_params, const RenderControl &render_control, const Timer &timer) const;
-		std::unique_ptr<Image> generateImage(const std::string &denoise_params, const RenderControl &render_control, const Timer &timer) const;
+		Image *generateImage(const std::string &denoise_params, const RenderControl &render_control, const Timer &timer) const;
 
 	protected:
-#if HAVE_FREETYPE
-		void drawFontBitmap(FT_Bitmap_ *bitmap, Image *badge_image, int x, int y) const;
-#endif
 		int image_width_ = 0;
 		int image_height_ = 0;
 		bool draw_aa_ = true;

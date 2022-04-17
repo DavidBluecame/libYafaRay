@@ -39,8 +39,8 @@ enum class InterpolationType : int { None, Bilinear, Bicubic, Trilinear, Ewa };
 class Texture
 {
 	public :
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
-		Texture(Logger &logger) : logger_(logger) { }
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
+		explicit Texture(Logger &logger) : logger_(logger) { }
 		virtual ~Texture() = default;
 
 		/* indicate wether the the texture is discrete (e.g. image map) or continuous */
@@ -50,9 +50,12 @@ class Texture
 		virtual bool isThreeD() const { return true; }
 		virtual bool isNormalmap() const { return false; }
 
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const { return Rgba(0.f); }
-		virtual Rgba getRawColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const { return getColor(p, mipmap_params); }
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const { return applyIntensityContrastAdjustments(getRawColor(p, mipmap_params).col2Bri()); }
+		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const { return Rgba(0.f); }
+		Rgba getColor(const Point3 &p) const { return getColor(p, nullptr); }
+		virtual Rgba getRawColor(const Point3 &p, const MipMapParams *mipmap_params) const { return getColor(p, mipmap_params); }
+		Rgba getRawColor(const Point3 &p) const { return getRawColor(p, nullptr); }
+		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const { return applyIntensityContrastAdjustments(getRawColor(p, mipmap_params).col2Bri()); }
+		float getFloat(const Point3 &p) const { return getFloat(p, nullptr); }
 
 		/* gives the number of values in each dimension for discrete textures */
 		virtual void resolution(int &x, int &y, int &z) const { x = 0, y = 0, z = 0; };

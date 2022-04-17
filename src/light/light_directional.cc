@@ -34,9 +34,9 @@ DirectionalLight::DirectionalLight(Logger &logger, const Point3 &pos, Vec3 dir, 
 	color_ = col * inte;
 	intensity_ = color_.energy();
 	direction_.normalize();
-	Vec3::createCs(direction_, du_, dv_);
-	Vec3 &d = direction_;
-	major_axis_ = (d.x_ > d.y_) ? ((d.x_ > d.z_) ? 0 : 2) : ((d.y_ > d.z_) ? 1 : 2);
+	std::tie(du_, dv_) = Vec3::createCoordsSystem(direction_);
+	const Vec3 &d{direction_};
+	major_axis_ = (d.x() > d.y()) ? ((d.x() > d.z()) ? 0 : 2) : ((d.y() > d.z()) ? 1 : 2);
 }
 
 void DirectionalLight::init(Scene &scene)
@@ -62,7 +62,7 @@ bool DirectionalLight::illuminate(const SurfacePoint &sp, Rgb &col, Ray &wi) con
 	// check if the point is outside of the illuminated cylinder (non-infinite lights)
 	if(!infinite_)
 	{
-		Vec3 vec = position_ - sp.p_;
+		Vec3 vec{position_ - sp.p_};
 		float dist = (direction_ ^ vec).length();
 		if(dist > radius_) return false;
 		wi.tmax_ = (vec * direction_);
@@ -113,10 +113,10 @@ Rgb DirectionalLight::emitSample(Vec3 &wo, LSample &s) const
 	return color_;
 }
 
-std::unique_ptr<Light> DirectionalLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * DirectionalLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Point3 from(0.0);
-	Point3 dir(0.0, 0.0, 1.0);
+	Point3 from{0.f, 0.f, 0.f};
+	Point3 dir{0.f, 0.f, 1.f};
 	Rgb color(1.0);
 	float power = 1.0;
 	float rad = 1.0;
@@ -146,7 +146,7 @@ std::unique_ptr<Light> DirectionalLight::factory(Logger &logger, ParamMap &param
 		params.getParam("radius", rad);
 	}
 
-	auto light = std::unique_ptr<DirectionalLight>(new DirectionalLight(logger, from, Vec3(dir.x_, dir.y_, dir.z_), color, power, inf, rad, light_enabled, cast_shadows));
+	auto light = new DirectionalLight(logger, from, dir, color, power, inf, rad, light_enabled, cast_shadows);
 
 	light->shoot_caustic_ = shoot_c;
 	light->shoot_diffuse_ = shoot_d;

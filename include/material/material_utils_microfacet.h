@@ -49,9 +49,9 @@ inline Vec3 sampleQuadrantAniso(float s_1, float s_2, float e_u, float e_v)
 
 inline float asAnisoD(Vec3 h, float e_u, float e_v)
 {
-	if(h.z_ <= 0.f) return 0.f;
-	float exponent = (e_u * h.x_ * h.x_ + e_v * h.y_ * h.y_) / (1.00001f - h.z_ * h.z_);
-	return math::sqrt((e_u + 1.f) * (e_v + 1.f)) * math::pow(std::max(0.f, h.z_), exponent);
+	if(h.z() <= 0.f) return 0.f;
+	float exponent = (e_u * h.x() * h.x() + e_v * h.y() * h.y()) / (1.00001f - h.z() * h.z());
+	return math::sqrt((e_u + 1.f) * (e_v + 1.f)) * math::pow(std::max(0.f, h.z()), exponent);
 }
 
 inline float asAnisoPdf(Vec3 h, float cos_w_h, float e_u, float e_v)
@@ -67,21 +67,21 @@ inline Vec3 asAnisoSample(float s_1, float s_2, float e_u, float e_v)
 	}
 	else if(s_1 < 0.5f)
 	{
-		Vec3 vec = sampleQuadrantAniso(1.f - 4.f * (0.5f - s_1), s_2, e_u, e_v);
-		vec.x_ = -vec.x_;
+		Vec3 vec{sampleQuadrantAniso(1.f - 4.f * (0.5f - s_1), s_2, e_u, e_v)};
+		vec.x() = -vec.x();
 		return vec;
 	}
 	else if(s_1 < 0.75f)
 	{
-		Vec3 vec = sampleQuadrantAniso(4.f * (s_1 - 0.5f), s_2, e_u, e_v);
-		vec.x_ = -vec.x_;
-		vec.y_ = -vec.y_;
+		Vec3 vec{sampleQuadrantAniso(4.f * (s_1 - 0.5f), s_2, e_u, e_v)};
+		vec.x() = -vec.x();
+		vec.y() = -vec.y();
 		return vec;
 	}
 	else
 	{
-		Vec3 vec = sampleQuadrantAniso(1.f - 4.f * (1.f - s_1), s_2, e_u, e_v);
-		vec.y_ = -vec.y_;
+		Vec3 vec{sampleQuadrantAniso(1.f - 4.f * (1.f - s_1), s_2, e_u, e_v)};
+		vec.y() = -vec.y();
 		return vec;
 	}
 }
@@ -160,7 +160,7 @@ inline float fresnel(float wo_h, float ior)
 
 inline bool refract(float eta, const Vec3 &wo, Vec3 &wi, const Vec3 &h, float wo_h, float &kr, float &kt)
 {
-	wi = Vec3(0.f);
+	wi = Vec3{0.f};
 	const float c = -wo * h;
 	const float sign = (c > 0.f) ? 1 : -1;
 	const float t_1 = 1 - (eta * eta * (1 - c * c));

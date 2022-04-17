@@ -29,7 +29,7 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<VolumeRegion> VolumeRegion::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+VolumeRegion * VolumeRegion::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
@@ -38,15 +38,15 @@ std::unique_ptr<VolumeRegion> VolumeRegion::factory(Logger &logger, const ParamM
 	}
 	std::string type;
 	params.getParam("type", type);
-	if(type == "ExpDensityVolume") return ExpDensityVolumeRegion::factory(logger, params, scene);
-	else if(type == "GridVolume") return GridVolumeRegion::factory(logger, params, scene);
-	else if(type == "NoiseVolume") return NoiseVolumeRegion::factory(logger, params, scene);
-	else if(type == "SkyVolume") return SkyVolumeRegion::factory(logger, params, scene);
-	else if(type == "UniformVolume") return UniformVolumeRegion::factory(logger, params, scene);
+	if(type == "ExpDensityVolume") return ExpDensityVolumeRegion::factory(logger, scene, name, params);
+	else if(type == "GridVolume") return GridVolumeRegion::factory(logger, scene, name, params);
+	else if(type == "NoiseVolume") return NoiseVolumeRegion::factory(logger, scene, name, params);
+	else if(type == "SkyVolume") return SkyVolumeRegion::factory(logger, scene, name, params);
+	else if(type == "UniformVolume") return UniformVolumeRegion::factory(logger, scene, name, params);
 	else return nullptr;
 }
 
-std::unique_ptr<VolumeHandler> VolumeHandler::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+VolumeHandler * VolumeHandler::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
@@ -55,12 +55,12 @@ std::unique_ptr<VolumeHandler> VolumeHandler::factory(Logger &logger, const Para
 	}
 	std::string type;
 	params.getParam("type", type);
-	if(type == "beer") return BeerVolumeHandler::factory(logger, params, scene);
-	else if(type == "sss") return SssVolumeHandler::factory(logger, params, scene);
+	if(type == "beer") return BeerVolumeHandler::factory(logger, scene, name, params);
+	else if(type == "sss") return SssVolumeHandler::factory(logger, scene, name, params);
 	else return nullptr;
 }
 
-VolumeRegion::VolumeRegion(Logger &logger, Rgb sa, Rgb ss, Rgb le, float gg, Point3 pmin, Point3 pmax, int attgrid_scale) : logger_(logger)
+VolumeRegion::VolumeRegion(Logger &logger, const Rgb &sa, const Rgb &ss, const Rgb &le, float gg, const Point3 &pmin, const Point3 &pmax, int attgrid_scale) : logger_(logger)
 {
 	b_box_ = Bound(pmin, pmax);
 	s_a_ = sa;
@@ -79,8 +79,8 @@ Rgb DensityVolumeRegion::tau(const Ray &ray, float step_size, float offset) cons
 {
 	Bound::Cross cross = crossBound(ray);
 	// ray doesn't hit the BB
-	if(!cross.crossed_) return {0.f};
-	if(ray.tmax_ < cross.enter_ && ray.tmax_ >= 0.f) return Rgb(0.f);
+	if(!cross.crossed_) return Rgb{0.f};
+	if(ray.tmax_ < cross.enter_ && ray.tmax_ >= 0.f) return Rgb{0.f};
 	if(ray.tmax_ < cross.leave_ && ray.tmax_ >= 0.f) cross.leave_ = ray.tmax_;
 	if(cross.enter_ < 0.f) cross.enter_ = 0.f;
 
@@ -126,7 +126,7 @@ Rgb DensityVolumeRegion::tau(const Ray &ray, float step_size, float offset) cons
 	return tau_val;
 }
 
-float VolumeRegion::attenuation(const Point3 p, const Light *l) const
+float VolumeRegion::attenuation(const Point3 &p, const Light *l) const
 {
 	if(attenuation_grid_map_.find(l) == attenuation_grid_map_.end())
 	{
@@ -135,9 +135,9 @@ float VolumeRegion::attenuation(const Point3 p, const Light *l) const
 
 	const float *attenuation_grid = attenuation_grid_map_.at(l);
 
-	const float x = (p.x_ - b_box_.a_.x_) / b_box_.longX() * att_grid_x_ - 0.5f;
-	const float y = (p.y_ - b_box_.a_.y_) / b_box_.longY() * att_grid_y_ - 0.5f;
-	const float z = (p.z_ - b_box_.a_.z_) / b_box_.longZ() * att_grid_z_ - 0.5f;
+	const float x = (p.x() - b_box_.a_.x()) / b_box_.longX() * att_grid_x_ - 0.5f;
+	const float y = (p.y() - b_box_.a_.y()) / b_box_.longY() * att_grid_y_ - 0.5f;
+	const float z = (p.z() - b_box_.a_.z()) / b_box_.longZ() * att_grid_z_ - 0.5f;
 
 	//Check that the point is within the bounding box, return 0 if outside the box
 	if(x < -0.5f || y < -0.5f || z < -0.5f) return 0.f;

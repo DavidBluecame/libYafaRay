@@ -23,9 +23,10 @@
 #include "common/yafaray_common.h"
 #include "geometry/intersect_data.h"
 #include "color/color.h"
+#include "camera/camera.h"
 #include <vector>
 #include <memory>
-#include <camera/camera.h>
+#include <limits>
 
 BEGIN_YAFARAY
 
@@ -52,8 +53,8 @@ struct AcceleratorTsIntersectData : AcceleratorIntersectData
 class Accelerator
 {
 	public:
-		static std::unique_ptr<Accelerator> factory(Logger &logger, const std::vector<const Primitive *> &primitives_list, ParamMap &params);
-		Accelerator(Logger &logger) : logger_(logger) { }
+		static const Accelerator * factory(Logger &logger, const std::vector<const Primitive *> &primitives_list, const ParamMap &params);
+		explicit Accelerator(Logger &logger) : logger_(logger) { }
 		virtual ~Accelerator() = default;
 		virtual AcceleratorIntersectData intersect(const Ray &ray, float t_max) const = 0;
 		virtual AcceleratorIntersectData intersectS(const Ray &ray, float t_max, float shadow_bias) const = 0;

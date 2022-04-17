@@ -52,9 +52,9 @@ class Logger;
 class Interface
 {
 	public:
-		Interface(const ::yafaray_LoggerCallback_t logger_callback = nullptr, void *callback_data = nullptr, ::yafaray_DisplayConsole_t logger_display_console = YAFARAY_DISPLAY_CONSOLE_NORMAL);
+		explicit Interface( ::yafaray_LoggerCallback_t logger_callback = nullptr, void *callback_data = nullptr, ::yafaray_DisplayConsole_t logger_display_console = YAFARAY_DISPLAY_CONSOLE_NORMAL);
 		virtual ~Interface() noexcept;
-		void setLoggingCallback(const ::yafaray_LoggerCallback_t logger_callback, void *callback_data);
+		void setLoggingCallback( ::yafaray_LoggerCallback_t logger_callback, void *callback_data);
 		virtual void createScene() noexcept;
 		virtual int getSceneFilmWidth() const noexcept;
 		virtual int getSceneFilmHeight() const noexcept;
@@ -77,8 +77,10 @@ class Interface
 		virtual void paramsSetBool(const char *name, bool b) noexcept;
 		virtual void paramsSetInt(const char *name, int i) noexcept;
 		virtual void paramsSetFloat(const char *name, double f) noexcept;
-		virtual void paramsSetColor(const char *name, float r, float g, float b, float a = 1.f) noexcept;
-		virtual void paramsSetMatrix(const char *name, const Matrix4 &matrix, bool transpose = false) noexcept;
+		virtual void paramsSetColor(const char *name, float r, float g, float b, float a) noexcept;
+		void paramsSetColor(const char *name, float r, float g, float b) noexcept { paramsSetColor(name, r, g, b, 1.f); };
+		virtual void paramsSetMatrix(const char *name, const Matrix4 &matrix, bool transpose) noexcept;
+		void paramsSetMatrix(const char *name, const Matrix4 &matrix) noexcept { paramsSetMatrix(name, matrix, false); };
 		virtual void paramsClearAll() noexcept; 	//!< clear the paramMap and paramList
 		virtual void paramsPushList() noexcept; 	//!< push new list item in paramList (e.g. new shader node description)
 		virtual void paramsEndList() noexcept; 	//!< revert to writing to normal paramMap
@@ -86,9 +88,9 @@ class Interface
 		virtual Object *createObject(const char *name) noexcept;
 		virtual Light *createLight(const char *name) noexcept;
 		virtual Texture *createTexture(const char *name) noexcept;
-		virtual Material *createMaterial(const char *name) noexcept;
-		virtual Camera *createCamera(const char *name) noexcept;
-		virtual Background *createBackground(const char *name) noexcept;
+		virtual const Material *createMaterial(const char *name) noexcept;
+		virtual const Camera * createCamera(const char *name) noexcept;
+		virtual const Background * createBackground(const char *name) noexcept;
 		virtual Integrator *createIntegrator(const char *name) noexcept;
 		virtual VolumeRegion *createVolumeRegion(const char *name) noexcept;
 		virtual RenderView *createRenderView(const char *name) noexcept;
@@ -122,7 +124,7 @@ class Interface
 		void setInputColorSpace(const std::string &color_space_string, float gamma_val) noexcept;
 
 	protected:
-		virtual void setCurrentMaterial(const Material *material) noexcept;
+		virtual void setCurrentMaterial(const std::unique_ptr<const Material> *material) noexcept;
 		std::unique_ptr<Logger> logger_;
 		std::unique_ptr<ParamMap> params_;
 		std::list<ParamMap> nodes_params_; //! for materials that need to define a whole shader tree etc.

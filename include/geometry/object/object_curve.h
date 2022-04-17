@@ -32,9 +32,9 @@ class Material;
 class CurveObject final : public MeshObject
 {
 	public:
-		static std::unique_ptr<Object> factory(Logger &logger, ParamMap &params, const Scene &scene);
+		static Object *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 		CurveObject(int num_vertices, float strand_start, float strand_end, float strand_shape, bool has_uv = false, bool has_orco = false);
-		virtual bool calculateObject(const Material *material) override;
+		bool calculateObject(const std::unique_ptr<const Material> *material) override;
 
 	private:
 		float strand_start_ = 0.01f;

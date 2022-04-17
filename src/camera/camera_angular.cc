@@ -21,6 +21,8 @@
  */
 
 #include "camera/camera_angular.h"
+
+#include <cmath>
 #include "common/param.h"
 
 BEGIN_YAFARAY
@@ -61,7 +63,7 @@ CameraRay AngularCamera::shootRay(float px, float py, float lu, float lv) const
 	ray.from_ = position_;
 	if(circular_ && radius > max_radius_) { return {std::move(ray), false}; }
 	float theta = 0.f;
-	if(!((u == 0.f) && (v == 0.f))) theta = atan2(v, u);
+	if(!((u == 0.f) && (v == 0.f))) theta = std::atan2(v, u);
 	float phi;
 	if(projection_ == Projection::Orthographic) phi = math::asin(radius / focal_length_);
 	else if(projection_ == Projection::Stereographic) phi = 2.f * std::atan(radius / (2.f * focal_length_));
@@ -75,7 +77,7 @@ CameraRay AngularCamera::shootRay(float px, float py, float lu, float lv) const
 	return {std::move(ray), true};
 }
 
-std::unique_ptr<Camera> AngularCamera::factory(Logger &logger, ParamMap &params, const Scene &scene)
+const Camera * AngularCamera::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Point3 from(0, 1, 0), to(0, 0, 0), up(0, 1, 1);
 	int resx = 320, resy = 200;
@@ -108,7 +110,7 @@ std::unique_ptr<Camera> AngularCamera::factory(Logger &logger, ParamMap &params,
 	else if(projection_string == "rectilinear") projection = Projection::Rectilinear;
 	else projection = Projection::Equidistant;
 
-	auto cam = std::unique_ptr<AngularCamera>(new AngularCamera(logger, from, to, up, resx, resy, aspect, angle_degrees * math::div_pi_by_180, max_angle_degrees * math::div_pi_by_180, circular, projection, near_clip, far_clip));
+	auto cam = new AngularCamera(logger, from, to, up, resx, resy, aspect, angle_degrees * math::div_pi_by_180, max_angle_degrees * math::div_pi_by_180, circular, projection, near_clip, far_clip);
 	if(mirrored) cam->vright_ *= -1.0;
 	return cam;
 }
@@ -116,7 +118,7 @@ std::unique_ptr<Camera> AngularCamera::factory(Logger &logger, ParamMap &params,
 Point3 AngularCamera::screenproject(const Point3 &p) const
 {
 	//FIXME
-	Vec3 dir = p - position_;
+	Vec3 dir{p - position_};
 	dir.normalize();
 	// project p to pixel plane:
 	const float dx = cam_x_ * dir;

@@ -86,7 +86,7 @@ void PerspectiveCamera::biasDist(float &r) const
 
 void PerspectiveCamera::sampleTsd(float r_1, float r_2, float &u, float &v) const
 {
-	float fn = (float)bkhtype_;
+	const auto fn = static_cast<float>(bkhtype_);
 	int idx = int(r_1 * fn);
 	r_1 = (r_1 - ((float)idx) / fn) * fn;
 	biasDist(r_1);
@@ -137,8 +137,8 @@ CameraRay PerspectiveCamera::shootRay(float px, float py, float lu, float lv) co
 	{
 		float u, v;
 		getLensUv(lu, lv, u, v);
-		const Vec3 li = dof_rt_ * u + dof_up_ * v;
-		ray.from_ += Point3(li);
+		const Vec3 li{dof_rt_ * u + dof_up_ * v};
+		ray.from_ += li;
 		ray.dir_ = (ray.dir_ * dof_distance_) - li;
 		ray.dir_.normalize();
 	}
@@ -147,7 +147,7 @@ CameraRay PerspectiveCamera::shootRay(float px, float py, float lu, float lv) co
 
 Point3 PerspectiveCamera::screenproject(const Point3 &p) const
 {
-	const Vec3 dir = p - position_;
+	const Vec3 dir{p - position_};
 	// project p to pixel plane:
 	const float dx = dir * cam_x_;
 	const float dy = dir * cam_y_;
@@ -179,14 +179,14 @@ bool PerspectiveCamera::project(const Ray &wo, float lu, float lv, float &u, flo
 
 bool PerspectiveCamera::sampleLense() const { return aperture_ != 0; }
 
-std::unique_ptr<Camera> PerspectiveCamera::factory(Logger &logger, ParamMap &params, const Scene &scene)
+const Camera * PerspectiveCamera::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	std::string bkhtype = "disk1", bkhbias = "uniform";
 	Point3 from(0, 1, 0), to(0, 0, 0), up(0, 1, 1);
 	int resx = 320, resy = 200;
 	float aspect = 1, dfocal = 1, apt = 0, dofd = 0, bkhrot = 0;
 	float near_clip = 0.0f, far_clip = -1.0f;
-	std::string view_name = "";
+	std::string view_name;
 
 	params.getParam("from", from);
 	params.getParam("to", to);
@@ -216,7 +216,7 @@ std::unique_ptr<Camera> PerspectiveCamera::factory(Logger &logger, ParamMap &par
 	if(bkhbias == "center") 		bbt = BbCenter;
 	else if(bkhbias == "edge") 		bbt = BbEdge;
 
-	return std::unique_ptr<Camera>(new PerspectiveCamera(logger, from, to, up, resx, resy, aspect, dfocal, apt, dofd, bt, bbt, bkhrot, near_clip, far_clip));
+	return new PerspectiveCamera(logger, from, to, up, resx, resy, aspect, dfocal, apt, dofd, bt, bbt, bkhrot, near_clip, far_clip);
 }
 
 END_YAFARAY

@@ -84,16 +84,16 @@ unsigned int Interface::getNextFreeId() noexcept
 
 bool Interface::endObject() noexcept { return scene_->endObject(); }
 
-int  Interface::addVertex(double x, double y, double z) noexcept { return scene_->addVertex(Point3(x, y, z)); }
+int  Interface::addVertex(double x, double y, double z) noexcept { return scene_->addVertex({static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)}); }
 
 int  Interface::addVertex(double x, double y, double z, double ox, double oy, double oz) noexcept
 {
-	return scene_->addVertex(Point3(x, y, z), Point3(ox, oy, oz));
+	return scene_->addVertex({static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)}, {static_cast<float>(ox), static_cast<float>(oy), static_cast<float>(oz)});
 }
 
 void Interface::addNormal(double x, double y, double z) noexcept
 {
-	scene_->addNormal(Vec3(x, y, z));
+	scene_->addNormal({static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
 }
 
 bool Interface::addFace(int a, int b, int c) noexcept
@@ -117,7 +117,7 @@ bool Interface::addInstance(const char *base_object_name, const Matrix4 &obj_to_
 
 void Interface::paramsSetVector(const char *name, double x, double y, double z) noexcept
 {
-	(*cparams_)[std::string(name)] = Parameter(Vec3(x, y, z));
+	(*cparams_)[std::string(name)] = Parameter{Vec3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)}};
 }
 
 void Interface::paramsSetString(const char *name, const char *s) noexcept
@@ -171,7 +171,7 @@ void Interface::paramsClearAll() noexcept
 
 void Interface::paramsPushList() noexcept
 {
-	nodes_params_.push_back({});
+	nodes_params_.emplace_back();
 	cparams_ = &nodes_params_.back();
 }
 
@@ -183,9 +183,9 @@ void Interface::paramsEndList() noexcept
 Object *Interface::createObject(const char *name) noexcept { return scene_->createObject(name, *params_); }
 Light *Interface::createLight(const char *name) noexcept { return scene_->createLight(name, *params_); }
 Texture *Interface::createTexture(const char *name) noexcept { return scene_->createTexture(name, *params_); }
-Material *Interface::createMaterial(const char *name) noexcept { return scene_->createMaterial(name, *params_, nodes_params_); }
-Camera *Interface::createCamera(const char *name) noexcept { return scene_->createCamera(name, *params_); }
-Background *Interface::createBackground(const char *name) noexcept { return scene_->createBackground(name, *params_); }
+const Material *Interface::createMaterial(const char *name) noexcept { return scene_->createMaterial(name, *params_, nodes_params_)->get(); }
+const Camera * Interface::createCamera(const char *name) noexcept { return scene_->createCamera(name, *params_); }
+const Background * Interface::createBackground(const char *name) noexcept { return scene_->createBackground(name, *params_); }
 Integrator *Interface::createIntegrator(const char *name) noexcept { return scene_->createIntegrator(name, *params_); }
 VolumeRegion *Interface::createVolumeRegion(const char *name) noexcept { return scene_->createVolumeRegion(name, *params_); }
 RenderView *Interface::createRenderView(const char *name) noexcept { return scene_->createRenderView(name, *params_); }
@@ -282,7 +282,7 @@ void Interface::cancel() noexcept
 	logger_->logWarning("Interface: Render canceled by user.");
 }
 
-void Interface::setCurrentMaterial(const Material *material) noexcept
+void Interface::setCurrentMaterial(const std::unique_ptr<const Material> *material) noexcept
 {
 	if(scene_) scene_->setCurrentMaterial(material);
 }

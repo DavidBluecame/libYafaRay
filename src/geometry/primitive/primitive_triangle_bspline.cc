@@ -39,21 +39,21 @@ IntersectData BsTrianglePrimitive::intersect(const Ray &ray, const Matrix4 *obj_
 	const Point3 *cn = &points[vertices_indices[2]];
 	const float tc = 1.f - ray.time_;
 	const float b_1 = tc * tc, b_2 = 2.f * ray.time_ * tc, b_3 = ray.time_ * ray.time_;
-	const Point3 a = b_1 * an[0] + b_2 * an[1] + b_3 * an[2];
-	const Point3 b = b_1 * bn[0] + b_2 * bn[1] + b_3 * bn[2];
-	const Point3 c = b_1 * cn[0] + b_2 * cn[1] + b_3 * cn[2];
-	const Vec3 edge_1 = b - a;
-	const Vec3 edge_2 = c - a;
-	const Vec3 pvec = ray.dir_ ^ edge_2;
+	const Point3 a{b_1 * an[0] + b_2 * an[1] + b_3 * an[2]};
+	const Point3 b{b_1 * bn[0] + b_2 * bn[1] + b_3 * bn[2]};
+	const Point3 c{b_1 * cn[0] + b_2 * cn[1] + b_3 * cn[2]};
+	const Vec3 edge_1{b - a};
+	const Vec3 edge_2{c - a};
+	const Vec3 pvec{ray.dir_ ^ edge_2};
 	const float det = edge_1 * pvec;
 	if(/*(det>-0.000001) && (det<0.000001)*/ det == 0.0) return {};
 	const float inv_det = 1.f / det;
-	const Vec3 tvec = ray.from_ - a;
+	const Vec3 tvec{ray.from_ - a};
 	const float u = (tvec * pvec) * inv_det;
-	if(u < 0.0 || u > 1.0) return {};
-	const Vec3 qvec = tvec ^ edge_1;
+	if(u < 0.f || u > 1.f) return {};
+	const Vec3 qvec{tvec ^ edge_1};
 	const float v = (ray.dir_ * qvec) * inv_det;
-	if((v < 0.0) || ((u + v) > 1.0)) return {};
+	if((v < 0.f) || ((u + v) > 1.f)) return {};
 	IntersectData intersect_data;
 	intersect_data.hit_ = true;
 	intersect_data.t_hit_ = edge_2 * qvec * inv_det;
@@ -72,15 +72,15 @@ Bound BsTrianglePrimitive::getBound(const Matrix4 *obj_to_world) const
 	const Point3 *an = &points[vertices_indices[0]];
 	const Point3 *bn = &points[vertices_indices[1]];
 	const Point3 *cn = &points[vertices_indices[2]];
-	const Point3 amin { math::min(an[0].x_, an[1].x_, an[2].x_), math::min(an[0].y_, an[1].y_, an[2].y_), math::min(an[0].z_, an[1].z_, an[2].z_) };
-	const Point3 bmin { math::min(bn[0].x_, bn[1].x_, bn[2].x_), math::min(bn[0].y_, bn[1].y_, bn[2].y_), math::min(bn[0].z_, bn[1].z_, bn[2].z_) };
-	const Point3 cmin { math::min(cn[0].x_, cn[1].x_, cn[2].x_), math::min(cn[0].y_, cn[1].y_, cn[2].y_), math::min(cn[0].z_, cn[1].z_, cn[2].z_) };
-	const Point3 amax { math::max(an[0].x_, an[1].x_, an[2].x_), math::max(an[0].y_, an[1].y_, an[2].y_), math::max(an[0].z_, an[1].z_, an[2].z_) };
-	const Point3 bmax { math::max(bn[0].x_, bn[1].x_, bn[2].x_), math::max(bn[0].y_, bn[1].y_, bn[2].y_), math::max(bn[0].z_, bn[1].z_, bn[2].z_) };
-	const Point3 cmax { math::max(cn[0].x_, cn[1].x_, cn[2].x_), math::max(cn[0].y_, cn[1].y_, cn[2].y_), math::max(cn[0].z_, cn[1].z_, cn[2].z_) };
-	const Point3 l { math::min(amin.x_, bmin.x_, cmin.x_), math::min(amin.y_, bmin.y_, cmin.y_), math::min(amin.z_, bmin.z_, cmin.z_) };
-	const Point3 h { math::max(amax.x_, bmax.x_, cmax.x_), math::max(amax.y_, bmax.y_, cmax.y_), math::max(amax.z_, bmax.z_, cmax.z_) };
-	return Bound(l, h);
+	const Point3 amin {math::min(an[0].x(), an[1].x(), an[2].x()), math::min(an[0].y(), an[1].y(), an[2].y()), math::min(an[0].z(), an[1].z(), an[2].z()) };
+	const Point3 bmin {math::min(bn[0].x(), bn[1].x(), bn[2].x()), math::min(bn[0].y(), bn[1].y(), bn[2].y()), math::min(bn[0].z(), bn[1].z(), bn[2].z()) };
+	const Point3 cmin {math::min(cn[0].x(), cn[1].x(), cn[2].x()), math::min(cn[0].y(), cn[1].y(), cn[2].y()), math::min(cn[0].z(), cn[1].z(), cn[2].z()) };
+	const Point3 amax {math::max(an[0].x(), an[1].x(), an[2].x()), math::max(an[0].y(), an[1].y(), an[2].y()), math::max(an[0].z(), an[1].z(), an[2].z()) };
+	const Point3 bmax {math::max(bn[0].x(), bn[1].x(), bn[2].x()), math::max(bn[0].y(), bn[1].y(), bn[2].y()), math::max(bn[0].z(), bn[1].z(), bn[2].z()) };
+	const Point3 cmax {math::max(cn[0].x(), cn[1].x(), cn[2].x()), math::max(cn[0].y(), cn[1].y(), cn[2].y()), math::max(cn[0].z(), cn[1].z(), cn[2].z()) };
+	const Point3 l {math::min(amin.x(), bmin.x(), cmin.x()), math::min(amin.y(), bmin.y(), cmin.y()), math::min(amin.z(), bmin.z(), cmin.z()) };
+	const Point3 h {math::max(amax.x(), bmax.x(), cmax.x()), math::max(amax.y(), bmax.y(), cmax.y()), math::max(amax.z(), bmax.z(), cmax.z()) };
+	return {l, h};
 }
 
 std::unique_ptr<const SurfacePoint> BsTrianglePrimitive::getSurface(const RayDifferentials *ray_differentials, const Point3 &hit, const IntersectData &intersect_data, const Matrix4 *obj_to_world, const Camera *camera) const
@@ -94,9 +94,9 @@ std::unique_ptr<const SurfacePoint> BsTrianglePrimitive::getSurface(const RayDif
 	const float time = intersect_data.time_;
 	const float tc = 1.f - time;
 	const float b_1 = tc * tc, b_2 = 2.f * time * tc, b_3 = time * time;
-	const Point3 a = b_1 * an[0] + b_2 * an[1] + b_3 * an[2];
-	const Point3 b = b_1 * bn[0] + b_2 * bn[1] + b_3 * bn[2];
-	const Point3 c = b_1 * cn[0] + b_2 * cn[1] + b_3 * cn[2];
+	const Point3 a{b_1 * an[0] + b_2 * an[1] + b_3 * an[2]};
+	const Point3 b{b_1 * bn[0] + b_2 * bn[1] + b_3 * bn[2]};
+	const Point3 c{b_1 * cn[0] + b_2 * cn[1] + b_3 * cn[2]};
 
 	auto sp = std::unique_ptr<SurfacePoint>(new SurfacePoint);
 	sp->intersect_data_ = intersect_data;
@@ -144,8 +144,8 @@ std::unique_ptr<const SurfacePoint> BsTrianglePrimitive::getSurface(const RayDif
 		if(std::abs(det) > 1e-30f)
 		{
 			const float invdet = 1.f / det;
-			const Vec3 dp_1 = vert[0] - vert[2];
-			const Vec3 dp_2 = vert[1] - vert[2];
+			const Vec3 dp_1{vert[0] - vert[2]};
+			const Vec3 dp_2{vert[1] - vert[2]};
 			sp->dp_du_ = (dv_2 * invdet) * dp_1 - (dv_1 * invdet) * dp_2;
 			sp->dp_dv_ = (du_1 * invdet) * dp_2 - (du_2 * invdet) * dp_1;
 		}
@@ -175,24 +175,24 @@ std::unique_ptr<const SurfacePoint> BsTrianglePrimitive::getSurface(const RayDif
 	sp->dp_du_.normalize();
 	sp->dp_dv_.normalize();
 
-	sp->material_ = material_;
+	sp->material_ = material_->get();
 	sp->object_ = &base_mesh_object_;
 	sp->p_ = hit;
-	Vec3::createCs(sp->n_, sp->nu_, sp->nv_);
+	std::tie(sp->nu_, sp->nv_) = Vec3::createCoordsSystem(sp->n_);
 	// transform dPdU and dPdV in shading space
-	sp->ds_du_.x_ = sp->nu_ * sp->dp_du_;
-	sp->ds_du_.y_ = sp->nv_ * sp->dp_du_;
-	sp->ds_du_.z_ = sp->n_ * sp->dp_du_;
-	sp->ds_dv_.x_ = sp->nu_ * sp->dp_dv_;
-	sp->ds_dv_.y_ = sp->nv_ * sp->dp_dv_;
-	sp->ds_dv_.z_ = sp->n_ * sp->dp_dv_;
+	sp->ds_du_.x() = sp->nu_ * sp->dp_du_;
+	sp->ds_du_.y() = sp->nv_ * sp->dp_du_;
+	sp->ds_du_.z() = sp->n_ * sp->dp_du_;
+	sp->ds_dv_.x() = sp->nu_ * sp->dp_dv_;
+	sp->ds_dv_.y() = sp->nv_ * sp->dp_dv_;
+	sp->ds_dv_.z() = sp->n_ * sp->dp_dv_;
 	sp->light_ = base_mesh_object_.getLight();
 	sp->has_uv_ = base_mesh_object_.hasUv();
 	sp->prim_num_ = getSelfIndex();
-	Vec3::createCs(sp->n_, sp->nu_, sp->nv_);
+	std::tie(sp->nu_, sp->nv_) = Vec3::createCoordsSystem(sp->n_);
 	sp->material_ = getMaterial();
 	sp->setRayDifferentials(ray_differentials);
-	sp->mat_data_ = sp->material_->initBsdf(*sp, camera);
+	sp->mat_data_ = std::shared_ptr<const MaterialData>(sp->material_->initBsdf(*sp, camera));
 	return sp;
 }
 

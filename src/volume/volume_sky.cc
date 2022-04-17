@@ -27,7 +27,7 @@ struct PSample;
 
 Rgb SkyVolumeRegion::sigmaA(const Point3 &p, const Vec3 &v) const
 {
-	return Rgb(0.f);
+	return Rgb{0.f};
 }
 
 Rgb SkyVolumeRegion::sigmaS(const Point3 &p, const Vec3 &v) const
@@ -36,15 +36,15 @@ Rgb SkyVolumeRegion::sigmaS(const Point3 &p, const Vec3 &v) const
 	return s_ray_ + s_mie_;
 	//}
 	//else
-	//	return Rgb(0.f);
+	//	return Rgb{0.f};
 }
 
 Rgb SkyVolumeRegion::tau(const Ray &ray, float step, float offset) const
 {
 	Bound::Cross cross = crossBound(ray);
 	// ray doesn't hit the BB
-	if(!cross.crossed_) return {0.f};
-	if(ray.tmax_ < cross.enter_ && ray.tmax_ >= 0) return Rgb(0.f);
+	if(!cross.crossed_) return Rgb{0.f};
+	if(ray.tmax_ < cross.enter_ && ray.tmax_ >= 0) return Rgb{0.f};
 	if(ray.tmax_ < cross.leave_ && ray.tmax_ >= 0) cross.leave_ = ray.tmax_;
 	// t0 < 0 means, ray.from is in the volume
 	if(cross.enter_ < 0.f) cross.enter_ = 0.f;
@@ -60,7 +60,7 @@ Rgb SkyVolumeRegion::emission(const Point3 &p, const Vec3 &v) const
 		return l_e_;
 	}
 	else
-		return Rgb(0.f);
+		return Rgb{0.f};
 }
 
 float SkyVolumeRegion::p(const Vec3 &w_l, const Vec3 &w_s) const
@@ -82,7 +82,7 @@ float SkyVolumeRegion::phaseMie(const Vec3 &w_l, const Vec3 &w_s) const
 }
 
 
-std::unique_ptr<VolumeRegion> SkyVolumeRegion::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+VolumeRegion * SkyVolumeRegion::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	float ss = .1f;
 	float sa = .1f;
@@ -101,10 +101,10 @@ std::unique_ptr<VolumeRegion> SkyVolumeRegion::factory(Logger &logger, const Par
 	params.getParam("maxY", max[1]);
 	params.getParam("maxZ", max[2]);
 
-	return std::unique_ptr<VolumeRegion>(new SkyVolumeRegion(logger, Rgb(sa), Rgb(ss), Rgb(le), Point3(min[0], min[1], min[2]), Point3(max[0], max[1], max[2])));
+	return new SkyVolumeRegion(logger, Rgb(sa), Rgb(ss), Rgb(le), {min[0], min[1], min[2]}, {max[0], max[1], max[2]});
 }
 
-SkyVolumeRegion::SkyVolumeRegion(Logger &logger, Rgb sa, Rgb ss, Rgb le, Point3 pmin, Point3 pmax) : VolumeRegion(logger)
+SkyVolumeRegion::SkyVolumeRegion(Logger &logger, const Rgb &sa, const Rgb &ss, const Rgb &le, const Point3 &pmin, const Point3 &pmax) : VolumeRegion(logger)
 {
 	b_box_ = Bound(pmin, pmax);
 	s_a_ = Rgb(0.f);

@@ -33,19 +33,18 @@ BEGIN_YAFARAY
 class HdrFormat final : public Format
 {
 	public:
-		static std::unique_ptr<Format> factory(Logger &logger, ParamMap &params);
+		explicit HdrFormat(Logger &logger) : Format(logger) { }
 
 	private:
-		HdrFormat(Logger &logger) : Format(logger) { }
-		virtual std::string getFormatName() const override { return "HdrFormat"; }
-		virtual std::unique_ptr<Image> loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma) override;
-		virtual bool saveToFile(const std::string &name, const ImageLayer &image_layer, ColorSpace color_space, float gamma, bool alpha_premultiply) override;
-		virtual bool isHdr() const override { return true; }
+		std::string getFormatName() const override { return "HdrFormat"; }
+		Image * loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma) override;
+		bool saveToFile(const std::string &name, const ImageLayer &image_layer, ColorSpace color_space, float gamma, bool alpha_premultiply) override;
+		bool isHdr() const override { return true; }
 		bool writeHeader(std::ofstream &file, const Image *image);
-		bool writeScanline(std::ofstream &file, RgbePixel *scanline, const Image *image);
 		bool readHeader(std::FILE *fp, int &width, int &height); //!< Reads file header and detects if the file is valid
 		bool readOrle(std::FILE *fp, int y, int scan_width, Image *image, const ColorSpace &color_space, float gamma); //!< Reads the scanline with the original Radiance RLE schema or without compression
 		bool readArle(std::FILE *fp, int y, int scan_width, Image *image, const ColorSpace &color_space, float gamma); //!< Reads a scanline with Adaptative RLE schema
+		static bool writeScanline(std::ofstream &file, RgbePixel *scanline, const Image *image);
 
 		RgbeHeader header_;
 };

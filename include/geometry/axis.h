@@ -29,7 +29,7 @@ class Axis
 {
 	public:
 		enum Code : int { None = -1, X = 0, Y, Z };
-		Axis(int axis) : axis_(axis) { }
+		explicit Axis(int axis) : axis_(axis) { }
 		bool operator == (Code axis_code) const { return axis_ == axis_code; }
 		bool operator != (Code axis_code) const { return axis_ != axis_code; }
 		int get() const { return axis_; }
@@ -47,7 +47,7 @@ class Axis
 struct ClipPlane
 {
 	enum class Pos: int { None, Lower, Upper };
-	ClipPlane(Pos pos = Pos::None) : pos_(pos) { }
+	explicit ClipPlane(Pos pos = Pos::None) : pos_(pos) { }
 	ClipPlane(int axis, Pos pos) : axis_(axis), pos_(pos) { }
 	int axis_ = Axis::None;
 	Pos pos_ = Pos::None;

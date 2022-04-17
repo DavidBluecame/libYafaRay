@@ -27,32 +27,32 @@ struct PSample;
 
 Rgb UniformVolumeRegion::sigmaA(const Point3 &p, const Vec3 &v) const
 {
-	if(!have_s_a_) return Rgb(0.f);
+	if(!have_s_a_) return Rgb{0.f};
 	if(b_box_.includes(p))
 	{
 		return s_a_;
 	}
 	else
-		return Rgb(0.f);
+		return Rgb{0.f};
 
 }
 
 Rgb UniformVolumeRegion::sigmaS(const Point3 &p, const Vec3 &v) const
 {
-	if(!have_s_s_) return Rgb(0.f);
+	if(!have_s_s_) return Rgb{0.f};
 	if(b_box_.includes(p))
 	{
 		return s_s_;
 	}
 	else
-		return Rgb(0.f);
+		return Rgb{0.f};
 }
 
 Rgb UniformVolumeRegion::tau(const Ray &ray, float step, float offset) const
 {
 	Bound::Cross cross = crossBound(ray);
-	if(!cross.crossed_) return {0.f};
-	if(ray.tmax_ < cross.enter_ && ray.tmax_ >= 0) return Rgb(0.f);
+	if(!cross.crossed_) return Rgb{0.f};
+	if(ray.tmax_ < cross.enter_ && ray.tmax_ >= 0) return Rgb{0.f};
 	if(ray.tmax_ < cross.leave_ && ray.tmax_ >= 0) cross.leave_ = ray.tmax_;
 	// t0 < 0 means, ray.from is in the volume
 	if(cross.enter_ < 0.f) cross.enter_ = 0.f;
@@ -63,16 +63,16 @@ Rgb UniformVolumeRegion::tau(const Ray &ray, float step, float offset) const
 
 Rgb UniformVolumeRegion::emission(const Point3 &p, const Vec3 &v) const
 {
-	if(!have_l_e_) return Rgb(0.f);
+	if(!have_l_e_) return Rgb{0.f};
 	if(b_box_.includes(p))
 	{
 		return l_e_;
 	}
 	else
-		return Rgb(0.f);
+		return Rgb{0.f};
 }
 
-std::unique_ptr<VolumeRegion> UniformVolumeRegion::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+VolumeRegion * UniformVolumeRegion::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	float ss = .1f;
 	float sa = .1f;
@@ -94,10 +94,10 @@ std::unique_ptr<VolumeRegion> UniformVolumeRegion::factory(Logger &logger, const
 	params.getParam("maxZ", max[2]);
 	params.getParam("attgridScale", att_sc);
 
-	return std::unique_ptr<VolumeRegion>(new UniformVolumeRegion(logger, Rgb(sa), Rgb(ss), Rgb(le), g, Point3(min[0], min[1], min[2]), Point3(max[0], max[1], max[2]), att_sc));
+	return new UniformVolumeRegion(logger, Rgb(sa), Rgb(ss), Rgb(le), g, {min[0], min[1], min[2]}, {max[0], max[1], max[2]}, att_sc);
 }
 
-UniformVolumeRegion::UniformVolumeRegion(Logger &logger, Rgb sa, Rgb ss, Rgb le, float gg, Point3 pmin, Point3 pmax, int attgrid_scale) :
+UniformVolumeRegion::UniformVolumeRegion(Logger &logger, const Rgb &sa, const Rgb &ss, const Rgb &le, float gg, const Point3 &pmin, const Point3 &pmax, int attgrid_scale) :
 		VolumeRegion(logger, sa, ss, le, gg, pmin, pmax, attgrid_scale)
 {
 	if(logger_.isVerbose()) logger_.logVerbose("UniformVolume: Vol.[", s_a_, ", ", s_s_, ", ", l_e_, ", ", pmin, ", ", pmax, ", ", attgrid_scale, "]");

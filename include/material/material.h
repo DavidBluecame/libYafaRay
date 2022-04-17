@@ -39,8 +39,8 @@ class Logger;
 struct BsdfFlags : public Flags
 {
 	BsdfFlags() = default;
-	BsdfFlags(const Flags &flags) : Flags(flags) { }
-	BsdfFlags(unsigned int flags) : Flags(flags) { }
+	BsdfFlags(const Flags &flags) : Flags(flags) { } // NOLINT(google-explicit-constructor)
+	BsdfFlags(unsigned int flags) : Flags(flags) { } // NOLINT(google-explicit-constructor)
 	enum Enum : unsigned int
 	{
 			None		= 0,
@@ -87,11 +87,11 @@ struct Specular
 class Material
 {
 	public:
-		static std::unique_ptr<Material> factory(Logger &logger, ParamMap &params, std::list<ParamMap> &nodes_params, const Scene &scene);
-		Material(Logger &logger);
+		static const Material *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params);
+		explicit Material(Logger &logger);
 		virtual ~Material();
 
-		virtual std::unique_ptr<MaterialData> createMaterialData(size_t number_of_nodes) const = 0;
+		virtual MaterialData * createMaterialData(size_t number_of_nodes) const = 0;
 
 		/*! Initialize the BSDF of a material. You must call this with the current surface point
 			first before any other methods (except isTransparent/getTransparency)! The renderstate
@@ -99,19 +99,19 @@ class Material
 			like texture lookups etc.
 			\param bsdf_types returns flags for all bsdf components the material has
 		 */
-		virtual std::unique_ptr<const MaterialData> initBsdf(SurfacePoint &sp, const Camera *camera) const = 0;
+		virtual const MaterialData * initBsdf(SurfacePoint &sp, const Camera *camera) const = 0;
 
 		/*! evaluate the BSDF for the given components.
 				@param types the types of BSDFs to be evaluated (e.g. diffuse only, or diffuse and glossy) */
-		virtual Rgb eval(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Vec3 &wl, const BsdfFlags &types, bool force_eval = false) const = 0;
+		virtual Rgb eval(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Vec3 &wl, const BsdfFlags &types, bool force_eval) const = 0;
+		Rgb eval(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Vec3 &wl, const BsdfFlags &types) const { return eval(mat_data, sp, wo, wl, types, false); }
 
 		/*! take a sample from the BSDF, given a 2-dimensional sample value and the BSDF types to be sampled from
 			\param s s1, s2 and flags members give necessary information for creating the sample, pdf and sampledFlags need to be returned
 			\param w returns the weight for importance sampling
 		*/
-		virtual Rgb sample(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, Vec3 &wi, Sample &s, float &w, bool chromatic, float wavelength, const Camera *camera) const = 0;// {return Rgb(0.f);}
-		virtual Rgb sample(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, Vec3 *const dir, Rgb &tcol, Sample &s, float *const w, bool chromatic, float wavelength) const {return Rgb(0.f);}
-		Rgb sampleClay(const SurfacePoint &sp, const Vec3 &wo, Vec3 &wi, Sample &s, float &w) const;
+		virtual Rgb sample(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, Vec3 &wi, Sample &s, float &w, bool chromatic, float wavelength, const Camera *camera) const = 0;// {return Rgb{0.f};}
+		virtual Rgb sample(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, Vec3 *const dir, Rgb &tcol, Sample &s, float *const w, bool chromatic, float wavelength) const {return Rgb{0.f};}
 		/*! return the pdf for sampling the BSDF with wi and wo
 		*/
 		virtual float pdf(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Vec3 &wi, const BsdfFlags &bsdfs) const {return 0.f;}
@@ -122,7 +122,7 @@ class Material
 		virtual bool isTransparent() const { return false; }
 		/*!	used for computing transparent shadows.	Default implementation returns black (i.e. solid shadow).
 			This is only used for shadow calculations and may only be called when isTransparent returned true.	*/
-		virtual Rgb getTransparency(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Camera *camera) const { return {0.f}; }
+		virtual Rgb getTransparency(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Camera *camera) const { return Rgb{0.f}; }
 		/*! evaluate the specular components for given direction. Somewhat a specialization of sample(),
 			because neither sample values nor pdf values are necessary for this.
 			Typical use: recursive raytracing of integrators. */
@@ -133,7 +133,7 @@ class Material
 
 		/*!	allow light emitting materials, for realizing correctly visible area lights.
 			default implementation returns black obviously.	*/
-		virtual Rgb emit(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo) const { return {0.f}; }
+		virtual Rgb emit(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo) const { return Rgb{0.f}; }
 
 		/*! get the volumetric handler for space at specified side of the surface
 			\param inside true means space opposite of surface normal, which is considered "inside" */
@@ -147,23 +147,23 @@ class Material
 		virtual bool scatterPhoton(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wi, Vec3 &wo, PSample &s, bool chromatic, float wavelength, const Camera *camera) const;
 
 		virtual float getMatIor() const { return 1.5f; }
-		virtual Rgb getDiffuseColor(const NodeTreeData &node_tree_data) const { return Rgb(0.f); }
-		virtual Rgb getGlossyColor(const NodeTreeData &node_tree_data) const { return Rgb(0.f); }
-		virtual Rgb getTransColor(const NodeTreeData &node_tree_data) const { return Rgb(0.f); }
-		virtual Rgb getMirrorColor(const NodeTreeData &node_tree_data) const { return Rgb(0.f); }
-		virtual Rgb getSubSurfaceColor(const NodeTreeData &node_tree_data) const { return Rgb(0.f); }
+		virtual Rgb getDiffuseColor(const NodeTreeData &node_tree_data) const { return Rgb{0.f}; }
+		virtual Rgb getGlossyColor(const NodeTreeData &node_tree_data) const { return Rgb{0.f}; }
+		virtual Rgb getTransColor(const NodeTreeData &node_tree_data) const { return Rgb{0.f}; }
+		virtual Rgb getMirrorColor(const NodeTreeData &node_tree_data) const { return Rgb{0.f}; }
+		virtual Rgb getSubSurfaceColor(const NodeTreeData &node_tree_data) const { return Rgb{0.f}; }
 		void setMaterialIndex(unsigned int new_mat_index)
 		{
 			material_index_ = new_mat_index;
 			if(material_index_highest_ < material_index_) material_index_highest_ = material_index_;
 		}
-		void resetMaterialIndex() { material_index_highest_ = 1.f; material_index_auto_ = 0; }
+		static void resetMaterialIndex() { material_index_highest_ = 1.f; material_index_auto_ = 0; }
 		unsigned int getAbsMaterialIndex() const { return material_index_; }
 		float getNormMaterialIndex() const { return static_cast<float>(getAbsMaterialIndex()) / static_cast<float>(material_index_highest_); }
-		Rgb getAbsMaterialIndexColor() const { return getAbsMaterialIndex(); }
-		Rgb getNormMaterialIndexColor() const { return getNormMaterialIndex(); }
+		Rgb getAbsMaterialIndexColor() const { return Rgb{static_cast<float>(getAbsMaterialIndex())}; }
+		Rgb getNormMaterialIndexColor() const { return Rgb{getNormMaterialIndex()}; }
 		Rgb getAutoMaterialIndexColor() const { return material_index_auto_color_; }
-		Rgb getAutoMaterialIndexNumber() const { return material_index_auto_; }
+		static Rgb getAutoMaterialIndexNumber() { return Rgb{static_cast<float>(material_index_auto_)}; }
 		Visibility getVisibility() const { return visibility_; }
 		bool getReceiveShadows() const { return receive_shadows_; }
 
@@ -183,6 +183,7 @@ class Material
 			if(highest_sampling_factor_ < sampling_factor_) highest_sampling_factor_ = sampling_factor_;
 		}
 		float getSamplingFactor() const { return sampling_factor_; }
+		static Rgb sampleClay(const SurfacePoint &sp, const Vec3 &wo, Vec3 &wi, Sample &s, float &w);
 		static Rgb getShaderColor(const ShaderNode *shader_node, const NodeTreeData &node_tree_data, const Rgb &color_without_shader)
 		{
 			return shader_node ? shader_node->getColor(node_tree_data) : color_without_shader;
@@ -199,7 +200,7 @@ class Material
 	protected:
 		/* small function to apply bump mapping to a surface point
 			you need to determine the partial derivatives for NU and NV first, e.g. from a shader node */
-		void applyBump(SurfacePoint &sp, const DuDv &du_dv) const;
+		static void applyBump(SurfacePoint &sp, const DuDv &du_dv);
 
 		BsdfFlags bsdf_flags_ = BsdfFlags::None;
 
@@ -209,7 +210,7 @@ class Material
 		std::unique_ptr<VolumeHandler> vol_i_; //!< volumetric handler for space inside material (opposed to surface normal)
 		std::unique_ptr<VolumeHandler> vol_o_; //!< volumetric handler for space outside ofmaterial (where surface normal points to)
 		unsigned int material_index_ = 0;	//!< Material Index for the material-index render pass
-		Rgb material_index_auto_color_ = 0.f;	//!< Material Index color automatically generated for the material-index-auto (color) render pass
+		Rgb material_index_auto_color_{0.f};	//!< Material Index color automatically generated for the material-index-auto (color) render pass
 		int additional_depth_ = 0;	//!< Per-material additional ray-depth
 		float transparent_bias_factor_ = 0.f;	//!< Per-material additional ray-bias setting for transparency (trick to avoid black areas due to insufficient depth when many transparent surfaces stacked). If >0.f this function is enabled and the result will no longer be realistic and may have artifacts.
 		bool transparent_bias_multiply_ray_depth_ = false;	//!< Per-material additional ray-bias setting for transparency (trick to avoid black areas due to insufficient depth when many transparent surfaces stacked). If enabled the bias will be multiplied by the current ray depth so the first transparent surfaces are rendered better and subsequent surfaces might be skipped.

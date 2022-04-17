@@ -58,7 +58,7 @@ typedef struct JpgErrorManager *ErrorPtr_t;
 
 void jpgExitOnError_global(j_common_ptr info)
 {
-	ErrorPtr_t myerr = (ErrorPtr_t)info->err;
+	const auto myerr = reinterpret_cast<ErrorPtr_t>(info->err);
 	(*info->err->output_message)(info);
 	longjmp(myerr->setjmp_buffer_, 1);
 }
@@ -94,7 +94,7 @@ bool JpgFormat::saveToFile(const std::string &name, const ImageLayer &image_laye
 	jpeg_set_quality(&info, 100, TRUE);
 	jpeg_start_compress(&info, TRUE);
 
-	uint8_t *scanline = new uint8_t[width * 3];
+	auto *scanline = new uint8_t[width * 3];
 	for(int y = 0; y < height; y++)
 	{
 		for(int x = 0; x < width; x++)
@@ -143,7 +143,7 @@ bool JpgFormat::saveAlphaChannelOnlyToFile(const std::string &name, const ImageL
 	jpeg_set_quality(&info, 100, TRUE);
 	jpeg_start_compress(&info, TRUE);
 
-	uint8_t *scanline =  new uint8_t[ width ];
+	auto *scanline =  new uint8_t[ width ];
 	for(int y = 0; y < height; y++)
 	{
 		for(int x = 0; x < width; x++)
@@ -162,7 +162,7 @@ bool JpgFormat::saveAlphaChannelOnlyToFile(const std::string &name, const ImageL
 	return true;
 }
 
-std::unique_ptr<Image> JpgFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
+Image * JpgFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
 {
 	std::FILE *fp = File::open(name, "rb");
 	logger_.logInfo(getFormatName(), ": Loading image \"", name, "\"...");
@@ -204,9 +204,9 @@ std::unique_ptr<Image> JpgFormat::loadFromFile(const std::string &name, const Im
 	const int width = info.output_width;
 	const int height = info.output_height;
 	const Image::Type type = Image::getTypeFromSettings(false, grayscale_);
-	std::unique_ptr<Image> image = Image::factory(logger_, width, height, type, optimization);
+	auto image = Image::factory(logger_, width, height, type, optimization);
 
-	uint8_t *scanline = new uint8_t[width * info.output_components];
+	auto *scanline = new uint8_t[width * info.output_components];
 	for(int y = 0; info.output_scanline < info.output_height; ++y)
 	{
 		jpeg_read_scanlines(&info, &scanline, 1);
@@ -257,12 +257,6 @@ std::unique_ptr<Image> JpgFormat::loadFromFile(const std::string &name, const Im
 	File::close(fp);
 	if(logger_.isVerbose()) logger_.logVerbose(getFormatName(), ": Done.");
 	return image;
-}
-
-
-std::unique_ptr<Format> JpgFormat::factory(Logger &logger, ParamMap &params)
-{
-	return std::unique_ptr<Format>(new JpgFormat(logger));
 }
 
 END_YAFARAY

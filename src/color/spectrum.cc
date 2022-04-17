@@ -24,8 +24,7 @@ namespace spectrum
 {
 
 // CIE color matching function table, 1931, 2 degree
-constexpr float cie_xy_zcolmat[471][4] =
-		{
+constexpr std::array<std::array<float, 4>, 471> cie_xy_zcolmat{{
 				{360.f, 0.000129900000f, 0.000003917000f, 0.000606100000f},
 				{361.f, 0.000145847000f, 0.000004393581f, 0.000680879200f},
 				{362.f, 0.000163802100f, 0.000004929604f, 0.000765145600f},
@@ -497,7 +496,7 @@ constexpr float cie_xy_zcolmat[471][4] =
 				{828.f, 0.000001439440f, 0.000000519808f, 0.000000000000f},
 				{829.f, 0.000001341977f, 0.000000484612f, 0.000000000000f},
 				{830.f, 0.000001251141f, 0.000000451810f, 0.000000000000f}
-		};
+		}};
 
 Rgb xyzToRgb(float x, float y, float z)
 {
@@ -516,9 +515,9 @@ Rgb wl2RgbFromCie(float wl)
 {
 	float fr = wl - 360.f;
 	const int p_1 = int(fr);
-	if(p_1 < 0) return {0.f};
+	if(p_1 < 0) return Rgb{0.f};
 	const int p_2 = p_1 + 1;
-	if(p_2 > 470) return {0.f};
+	if(p_2 > 470) return Rgb{0.f};
 	fr -= std::floor(fr);
 	const float fr_2 = 1.f - fr;
 	const float x = fr_2 * cie_xy_zcolmat[p_1][1] + fr * cie_xy_zcolmat[p_2][1];
@@ -531,9 +530,9 @@ Rgb wl2Xyz(float wl)
 {
 	float fr = wl - 360.f;
 	const int p_1 = int(fr);
-	if(p_1 < 0) return {0.f};
+	if(p_1 < 0) return Rgb{0.f};
 	const int p_2 = p_1 + 1;
-	if(p_2 > 470) return {0.f};
+	if(p_2 > 470) return Rgb{0.f};
 	fr -= std::floor(fr);
 	const float fr_2 = 1.f - fr;
 	const float x = fr_2 * cie_xy_zcolmat[p_1][1] + fr * cie_xy_zcolmat[p_2][1];

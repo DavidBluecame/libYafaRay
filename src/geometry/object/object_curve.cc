@@ -23,21 +23,20 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Object> CurveObject::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Object * CurveObject::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
 		logger.logDebug("CurveObject::factory");
 		params.logContents(logger);
 	}
-	std::string name, light_name, visibility, base_object_name;
+	std::string light_name, visibility, base_object_name;
 	bool is_base_object = false, has_uv = false, has_orco = false;
 	int num_vertices = 0;
 	int object_index = 0;
 	float strand_start = 0.01f;
 	float strand_end = 0.01f;
 	float strand_shape = 0.f;
-	params.getParam("name", name);
 	params.getParam("light_name", light_name);
 	params.getParam("visibility", visibility);
 	params.getParam("is_base_object", is_base_object);
@@ -48,7 +47,7 @@ std::unique_ptr<Object> CurveObject::factory(Logger &logger, ParamMap &params, c
 	params.getParam("strand_shape", strand_shape);
 	params.getParam("has_uv", has_uv);
 	params.getParam("has_orco", has_orco);
-	auto object = std::unique_ptr<CurveObject>(new CurveObject(num_vertices, strand_start, strand_end, strand_shape, has_uv, has_orco));
+	auto object = new CurveObject(num_vertices, strand_start, strand_end, strand_shape, has_uv, has_orco);
 	object->setName(name);
 	object->setLight(scene.getLight(light_name));
 	object->setVisibility(visibility::fromString(visibility));
@@ -61,7 +60,7 @@ CurveObject::CurveObject(int num_vertices, float strand_start, float strand_end,
 {
 }
 
-bool CurveObject::calculateObject(const Material *material)
+bool CurveObject::calculateObject(const std::unique_ptr<const Material> *material)
 {
 	const std::vector<Point3> &points = getPoints();
 	const int points_size = points.size();
@@ -70,7 +69,7 @@ bool CurveObject::calculateObject(const Material *material)
 	Vec3 v{0.f};
 	for(int i = 0; i < points_size; i++)
 	{
-		const Point3 o = points[i];
+		const Point3 o{points[i]};
 		float r;	//current radius
 		if(strand_shape_ < 0)
 		{
@@ -83,13 +82,13 @@ bool CurveObject::calculateObject(const Material *material)
 		// Last point keep previous tangent plane
 		if(i < points_size - 1)
 		{
-			Vec3 normal = points[i + 1] - points[i];
+			Vec3 normal{points[i + 1] - points[i]};
 			normal.normalize();
-			Vec3::createCs(normal, u, v);
+			std::tie(u, v) = Vec3::createCoordsSystem(normal);
 		}
 		// TODO: thikness?
-		const Point3 a = o - (0.5 * r * v) - 1.5 * r / math::sqrt(3.f) * u;
-		const Point3 b = o - (0.5 * r * v) + 1.5 * r / math::sqrt(3.f) * u;
+		const Point3 a{o - (0.5 * r * v) - 1.5 * r / math::sqrt(3.f) * u};
+		const Point3 b{o - (0.5 * r * v) + 1.5 * r / math::sqrt(3.f) * u};
 
 		addPoint(a);
 		addPoint(b);

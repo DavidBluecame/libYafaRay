@@ -115,7 +115,7 @@ yafaray_bool_t yafaray_addInstance(yafaray_Interface_t *interface, const char *b
 
 yafaray_bool_t yafaray_addInstanceArray(yafaray_Interface_t *interface, const char *base_object_name, const float obj_to_world[4][4])
 {
-	return static_cast<yafaray_bool_t>(reinterpret_cast<yafaray::Interface *>(interface)->addInstance(base_object_name, obj_to_world));
+	return static_cast<yafaray_bool_t>(reinterpret_cast<yafaray::Interface *>(interface)->addInstance(base_object_name, yafaray::Matrix4(obj_to_world)));
 }
 
 void yafaray_paramsSetVector(yafaray_Interface_t *interface, const char *name, double x, double y, double z)
@@ -155,7 +155,7 @@ void yafaray_paramsSetMatrix(yafaray_Interface_t *interface, const char *name, f
 
 void yafaray_paramsSetMatrixArray(yafaray_Interface_t *interface, const char *name, const float matrix[4][4], yafaray_bool_t transpose)
 {
-	reinterpret_cast<yafaray::Interface *>(interface)->paramsSetMatrix(name, matrix, transpose);
+	reinterpret_cast<yafaray::Interface *>(interface)->paramsSetMatrix(name, yafaray::Matrix4(matrix), transpose);
 }
 
 void yafaray_paramsClearAll(yafaray_Interface_t *interface) 	//!< clear the paramMap and paramList
@@ -364,7 +364,7 @@ yafaray_Image_t *yafaray_createImage(yafaray_Interface_t *interface, const char 
 
 yafaray_bool_t yafaray_setImageColor(yafaray_Image_t *image, int x, int y, float red, float green, float blue, float alpha)
 {
-	yafaray::Image *yaf_image = reinterpret_cast<yafaray::Image *>(image);
+	auto *yaf_image = reinterpret_cast<yafaray::Image *>(image);
 	if(!yaf_image) return YAFARAY_BOOL_FALSE;
 	if(x < 0 || x >= yaf_image->getWidth()) return YAFARAY_BOOL_FALSE;
 	else if(y < 0 || y >= yaf_image->getHeight()) return YAFARAY_BOOL_FALSE;
@@ -374,7 +374,7 @@ yafaray_bool_t yafaray_setImageColor(yafaray_Image_t *image, int x, int y, float
 
 yafaray_bool_t yafaray_getImageColor(const yafaray_Image_t *image, int x, int y, float *red, float *green, float *blue, float *alpha)
 {
-	const yafaray::Image *yaf_image = reinterpret_cast<const yafaray::Image *>(image);
+	const auto *yaf_image = reinterpret_cast<const yafaray::Image *>(image);
 	if(!yaf_image) return YAFARAY_BOOL_FALSE;
 	if(x < 0 || x >= yaf_image->getWidth()) return YAFARAY_BOOL_FALSE;
 	else if(y < 0 || y >= yaf_image->getHeight()) return YAFARAY_BOOL_FALSE;

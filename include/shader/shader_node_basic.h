@@ -29,16 +29,16 @@ BEGIN_YAFARAY
 class TextureMapperNode final : public ShaderNode
 {
 	public:
-		static std::unique_ptr<ShaderNode> factory(Logger &logger, const ParamMap &params, const Scene &scene);
+		static ShaderNode *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		enum Coords : int { Uv, Global, Orco, Transformed, Normal, Reflect, Window, Stick, Stress, Tangent };
 		enum Projection : int { Plain = 0, Cube, Tube, Sphere };
 
-		TextureMapperNode(const Texture *texture) : tex_(texture) { }
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
-		virtual void evalDerivative(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
-		virtual bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override { return true; };
+		explicit TextureMapperNode(const Texture *texture) : tex_(texture) { }
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
+		void evalDerivative(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
+		bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override { return true; };
 		//virtual void getDerivative(const surfacePoint_t &sp, float &du, float &dv) const;
 
 		void setup();
@@ -66,12 +66,12 @@ class TextureMapperNode final : public ShaderNode
 class ValueNode final : public ShaderNode
 {
 	public:
-		static std::unique_ptr<ShaderNode> factory(Logger &logger, const ParamMap &params, const Scene &scene);
+		static ShaderNode *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		ValueNode(Rgba col, float val): color_(col), value_(val) { }
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
-		virtual bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override { return true; };
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
+		bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override { return true; };
 
 		Rgba color_;
 		float value_;
@@ -80,17 +80,17 @@ class ValueNode final : public ShaderNode
 class MixNode : public ShaderNode
 {
 	public:
-		static std::unique_ptr<ShaderNode> factory(Logger &logger, const ParamMap &params, const Scene &scene);
+		static ShaderNode *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 
 	protected:
 		MixNode() = default;
 		void getInputs(const NodeTreeData &node_tree_data, Rgba &cin_1, Rgba &cin_2, float &fin_1, float &fin_2, float &f_2) const;
 
 	private:
-		MixNode(float val) : cfactor_(val) { }
-		virtual void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
-		virtual bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override;
-		virtual std::vector<const ShaderNode *> getDependencies() const override;
+		explicit MixNode(float val) : cfactor_(val) { }
+		void eval(NodeTreeData &node_tree_data, const SurfacePoint &sp, const Camera *camera) const override;
+		bool configInputs(Logger &logger, const ParamMap &params, const NodeFinder &find) override;
+		std::vector<const ShaderNode *> getDependencies() const override;
 
 		Rgba col_1_, col_2_;
 		float val_1_, val_2_;

@@ -69,7 +69,7 @@ bool TifFormat::saveToFile(const std::string &name, const ImageLayer &image_laye
 	const size_t bytes_per_scanline = channels * w;
 	libtiff::TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, libtiff::TIFFDefaultStripSize(out, bytes_per_scanline));
 
-	uint8_t *scanline = (uint8_t *)libtiff::_TIFFmalloc(bytes_per_scanline);
+	auto *scanline = static_cast<uint8_t *>(libtiff::_TIFFmalloc(bytes_per_scanline));
 	for(int y = 0; y < h; y++)
 	{
 		for(int x = 0; x < w; x++)
@@ -96,7 +96,7 @@ bool TifFormat::saveToFile(const std::string &name, const ImageLayer &image_laye
 	return true;
 }
 
-std::unique_ptr<Image> TifFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
+Image * TifFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
 {
 #if defined(_WIN32)
 	std::wstring wname = string::utf8ToWutf16Le(name);
@@ -113,14 +113,14 @@ std::unique_ptr<Image> TifFormat::loadFromFile(const std::string &name, const Im
 	libtiff::uint32 w, h;
 	TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &w);
 	TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &h);
-	libtiff::uint32 *tiff_data = (libtiff::uint32 *)libtiff::_TIFFmalloc(w * h * sizeof(libtiff::uint32));
+	auto *tiff_data = static_cast<libtiff::uint32 *>(libtiff::_TIFFmalloc(w * h * sizeof(libtiff::uint32)));
 	if(!libtiff::TIFFReadRGBAImage(tif, w, h, tiff_data, 0))
 	{
 		logger_.logError(getFormatName(), ": Error reading TIFF file");
 		return nullptr;
 	}
 	const Image::Type type = Image::getTypeFromSettings(true, grayscale_);
-	std::unique_ptr<Image> image = Image::factory(logger_, w, h, type, optimization);
+	auto image = Image::factory(logger_, w, h, type, optimization);
 	int i = 0;
 	for(int y = static_cast<int>(h) - 1; y >= 0; y--)
 	{
@@ -140,11 +140,6 @@ std::unique_ptr<Image> TifFormat::loadFromFile(const std::string &name, const Im
 	libtiff::TIFFClose(tif);
 	if(logger_.isVerbose()) logger_.logVerbose(getFormatName(), ": Done.");
 	return image;
-}
-
-std::unique_ptr<Format> TifFormat::factory(Logger &logger, ParamMap &params)
-{
-	return std::unique_ptr<Format>(new TifFormat(logger));
 }
 
 END_YAFARAY

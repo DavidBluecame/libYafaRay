@@ -18,6 +18,8 @@
  *      Foundation,Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 #include "material/material_rough_glass.h"
+
+#include <cmath>
 #include "shader/shader_node.h"
 #include "common/logger.h"
 #include "material/material_utils_microfacet.h"
@@ -43,9 +45,9 @@ RoughGlassMaterial::RoughGlassMaterial(Logger &logger, float ior, Rgb filt_c, co
 	}
 }
 
-std::unique_ptr<const MaterialData> RoughGlassMaterial::initBsdf(SurfacePoint &sp, const Camera *camera) const
+const MaterialData * RoughGlassMaterial::initBsdf(SurfacePoint &sp, const Camera *camera) const
 {
-	std::unique_ptr<MaterialData> mat_data = createMaterialData(color_nodes_.size() + bump_nodes_.size());
+	auto mat_data = createMaterialData(color_nodes_.size() + bump_nodes_.size());
 	if(bump_shader_) evalBump(mat_data->node_tree_data_, sp, bump_shader_, camera);
 	for(const auto &node : color_nodes_) node->eval(mat_data->node_tree_data_, sp, camera);
 	return mat_data;
@@ -53,13 +55,13 @@ std::unique_ptr<const MaterialData> RoughGlassMaterial::initBsdf(SurfacePoint &s
 
 Rgb RoughGlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, Vec3 &wi, Sample &s, float &w, bool chromatic, float wavelength, const Camera *camera) const
 {
-	const Vec3 n = SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo);
+	const Vec3 n{SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo)};
 	const bool outside = sp.ng_ * wo > 0.f;
 	s.pdf_ = 1.f;
 	const float alpha_texture = roughness_shader_ ? roughness_shader_->getScalar(mat_data->node_tree_data_) + 0.001f : 0.001f;
 	const float alpha_2 = roughness_shader_ ? alpha_texture * alpha_texture : a_2_;
-	Vec3 h = microfacet::ggxSample(alpha_2, s.s_1_, s.s_2_);
-	h = h.x_ * sp.nu_ + h.y_ * sp.nv_ + h.z_ * n;
+	Vec3 h{microfacet::ggxSample(alpha_2, s.s_1_, s.s_2_)};
+	h = h.x() * sp.nu_ + h.y() * sp.nv_ + h.z() * n;
 	h.normalize();
 	float cur_ior = ior_;
 	if(ior_shader_) cur_ior += ior_shader_->getScalar(mat_data->node_tree_data_);
@@ -133,7 +135,7 @@ Rgb RoughGlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint 
 		wi = wo;
 		wi.reflect(h);
 		s.sampled_flags_ = BsdfFlags::Glossy | BsdfFlags::Reflect;
-		ret = 1.f;
+		ret = Rgb{1.f};
 		w = 1.f;
 	}
 	applyWireFrame(ret, wireframe_shader_, mat_data->node_tree_data_, sp);
@@ -142,14 +144,14 @@ Rgb RoughGlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint 
 
 Rgb RoughGlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, Vec3 *const dir, Rgb &tcol, Sample &s, float *const w, bool chromatic, float wavelength) const
 {
-	const Vec3 n = SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo);
+	const Vec3 n{SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo)};
 	const bool outside = sp.ng_ * wo > 0.f;
 	s.pdf_ = 1.f;
 	const float alpha_texture = roughness_shader_ ? roughness_shader_->getScalar(mat_data->node_tree_data_) + 0.001f : 0.001f;
 	const float alpha_2 = roughness_shader_ ? alpha_texture * alpha_texture : a_2_;
 
-	Vec3 h = microfacet::ggxSample(alpha_2, s.s_1_, s.s_2_);
-	h = h.x_ * sp.nu_ + h.y_ * sp.nv_ + h.z_ * n;
+	Vec3 h{microfacet::ggxSample(alpha_2, s.s_1_, s.s_2_)};
+	h = h.x() * sp.nu_ + h.y() * sp.nv_ + h.z() * n;
 	h.normalize();
 
 	float cur_ior = ior_;
@@ -228,7 +230,7 @@ Rgb RoughGlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint 
 		wi.reflect(h);
 		s.sampled_flags_ |= BsdfFlags::Glossy | BsdfFlags::Reflect;
 		dir[0] = wi;
-		ret = 1.f;
+		ret = Rgb{1.f};
 		w[0] = 1.f;
 	}
 	applyWireFrame(ret, wireframe_shader_, mat_data->node_tree_data_, sp);
@@ -237,7 +239,7 @@ Rgb RoughGlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint 
 
 Rgb RoughGlassMaterial::getTransparency(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Camera *camera) const
 {
-	const Vec3 n = SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo);
+	const Vec3 n{SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo)};
 	float kr, kt;
 	Vec3::fresnel(wo, n, getShaderScalar(ior_shader_, mat_data->node_tree_data_, ior_), kr, kt);
 	Rgb result = kt * getShaderColor(filter_col_shader_, mat_data->node_tree_data_, filter_color_);
@@ -257,14 +259,13 @@ float RoughGlassMaterial::getMatIor() const
 	return ior_;
 }
 
-std::unique_ptr<Material> RoughGlassMaterial::factory(Logger &logger, ParamMap &params, std::list<ParamMap> &nodes_params, const Scene &scene)
+const Material *RoughGlassMaterial::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params)
 {
 	float ior = 1.4;
 	float filt = 0.f;
 	float alpha = 0.5f;
 	float disp_power = 0.0;
 	Rgb filt_col(1.f), absorp(1.f), sr_col(1.f);
-	std::string name;
 	bool fake_shad = false;
 	std::string s_visibility = "normal";
 	int mat_pass_index = 0;
@@ -299,7 +300,7 @@ std::unique_ptr<Material> RoughGlassMaterial::factory(Logger &logger, ParamMap &
 
 	alpha = std::max(1e-4f, std::min(alpha * 0.5f, 1.f));
 
-	auto mat = std::unique_ptr<RoughGlassMaterial>(new RoughGlassMaterial(logger, ior, filt * filt_col + Rgb(1.f - filt), sr_col, fake_shad, alpha, disp_power, visibility));
+	auto mat = new RoughGlassMaterial(logger, ior, filt * filt_col + Rgb(1.f - filt), sr_col, fake_shad, alpha, disp_power, visibility);
 
 	mat->setMaterialIndex(mat_pass_index);
 	mat->receive_shadows_ = receive_shadows;
@@ -322,24 +323,21 @@ std::unique_ptr<Material> RoughGlassMaterial::factory(Logger &logger, ParamMap &
 			if(params.getParam("absorption_dist", dist))
 			{
 				const float maxlog = log(1e38);
-				sigma.r_ = (absorp.r_ > 1e-38) ? -log(absorp.r_) : maxlog;
-				sigma.g_ = (absorp.g_ > 1e-38) ? -log(absorp.g_) : maxlog;
-				sigma.b_ = (absorp.b_ > 1e-38) ? -log(absorp.b_) : maxlog;
+				sigma.r_ = (absorp.r_ > 1e-38) ? -std::log(absorp.r_) : maxlog;
+				sigma.g_ = (absorp.g_ > 1e-38) ? -std::log(absorp.g_) : maxlog;
+				sigma.b_ = (absorp.b_ > 1e-38) ? -std::log(absorp.b_) : maxlog;
 				if(dist != 0.f) sigma *= 1.f / dist;
 			}
 			mat->absorb_ = true;
 			mat->beer_sigma_a_ = sigma;
 			mat->bsdf_flags_ |= BsdfFlags::Volumetric;
 			// creat volume handler (backwards compatibility)
-			if(params.getParam("name", name))
-			{
-				ParamMap map;
-				map["type"] = std::string("beer");
-				map["absorption_col"] = absorp;
-				map["absorption_dist"] = Parameter(dist);
-				mat->vol_i_ = VolumeHandler::factory(logger, map, scene);
-				mat->bsdf_flags_ |= BsdfFlags::Volumetric;
-			}
+			ParamMap map;
+			map["type"] = std::string("beer");
+			map["absorption_col"] = absorp;
+			map["absorption_dist"] = Parameter(dist);
+			mat->vol_i_ = std::unique_ptr<VolumeHandler>(VolumeHandler::factory(logger, scene, name, map));
+			mat->bsdf_flags_ |= BsdfFlags::Volumetric;
 		}
 	}
 

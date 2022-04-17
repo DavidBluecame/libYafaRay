@@ -25,13 +25,13 @@ BEGIN_YAFARAY
 
 struct PSample;
 
-float ExpDensityVolumeRegion::density(Point3 p) const
+float ExpDensityVolumeRegion::density(const Point3 &p) const
 {
-	float height = p.z_ - b_box_.a_.z_;
+	float height = p.z() - b_box_.a_.z();
 	return a_ * math::exp(-b_ * height);
 }
 
-std::unique_ptr<VolumeRegion> ExpDensityVolumeRegion::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+VolumeRegion * ExpDensityVolumeRegion::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	float ss = .1f;
 	float sa = .1f;
@@ -57,10 +57,10 @@ std::unique_ptr<VolumeRegion> ExpDensityVolumeRegion::factory(Logger &logger, co
 	params.getParam("maxZ", max[2]);
 	params.getParam("attgridScale", att_sc);
 
-	return std::unique_ptr<VolumeRegion>(new ExpDensityVolumeRegion(logger, Rgb(sa), Rgb(ss), Rgb(le), g, Point3(min[0], min[1], min[2]), Point3(max[0], max[1], max[2]), att_sc, a, b));
+	return new ExpDensityVolumeRegion(logger, Rgb(sa), Rgb(ss), Rgb(le), g, {min[0], min[1], min[2]}, {max[0], max[1], max[2]}, att_sc, a, b);
 }
 
-ExpDensityVolumeRegion::ExpDensityVolumeRegion(Logger &logger, Rgb sa, Rgb ss, Rgb le, float gg, Point3 pmin, Point3 pmax, int attgrid_scale, float aa, float bb) :
+ExpDensityVolumeRegion::ExpDensityVolumeRegion(Logger &logger, const Rgb &sa, const Rgb &ss, const Rgb &le, float gg, const Point3 &pmin, const Point3 &pmax, int attgrid_scale, float aa, float bb) :
 		DensityVolumeRegion(logger, sa, ss, le, gg, pmin, pmax, attgrid_scale)
 {
 	a_ = aa;

@@ -23,11 +23,12 @@
 #include "geometry/primitive/primitive.h"
 #include "common/param.h"
 #include "image/image_output.h"
+#include <cmath>
 #include <cstring>
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Accelerator> AcceleratorKdTree::factory(Logger &logger, const std::vector<const Primitive *> &primitives, ParamMap &params)
+const Accelerator * AcceleratorKdTree::factory(Logger &logger, const std::vector<const Primitive *> &primitives, const ParamMap &params)
 {
 	int depth = 0;
 	int leaf_size = 1;
@@ -39,7 +40,7 @@ std::unique_ptr<Accelerator> AcceleratorKdTree::factory(Logger &logger, const st
 	params.getParam("cost_ratio", cost_ratio);
 	params.getParam("empty_bonus", empty_bonus);
 
-	auto accelerator = std::unique_ptr<Accelerator>(new AcceleratorKdTree(logger, primitives, depth, leaf_size, cost_ratio, empty_bonus));
+	auto accelerator = new AcceleratorKdTree(logger, primitives, depth, leaf_size, cost_ratio, empty_bonus);
 	return accelerator;
 }
 
@@ -54,7 +55,7 @@ AcceleratorKdTree::AcceleratorKdTree(Logger &logger, const std::vector<const Pri
 	next_free_node_ = 0;
 	allocated_nodes_count_ = 256;
 	nodes_ = std::unique_ptr<Node[]>(new Node[allocated_nodes_count_]);
-	if(max_depth_ <= 0 && total_prims_ > 0) max_depth_ = static_cast<int>(7.0f + 1.66f * log(static_cast<float>(total_prims_)));
+	if(max_depth_ <= 0 && total_prims_ > 0) max_depth_ = static_cast<int>(7.0f + 1.66f * std::log(static_cast<float>(total_prims_)));
 	const double log_leaves = 1.442695f * log(static_cast<double >(total_prims_)); // = base2 log
 	if(leaf_size <= 0)
 	{
@@ -642,7 +643,7 @@ AcceleratorIntersectData AcceleratorKdTree::intersect(const Ray &ray, float t_ma
 	const Bound::Cross cross = tree_bound.cross(ray, t_max);
 	if(!cross.crossed_) { return {}; }
 
-	const Vec3 inv_dir(1.f / ray.dir_.x_, 1.f / ray.dir_.y_, 1.f / ray.dir_.z_);
+	const Vec3 inv_dir(1.f / ray.dir_.x(), 1.f / ray.dir_.y(), 1.f / ray.dir_.z());
 
 	std::array<Stack, kd_max_stack_> stack;
 	const Node *far_child, *curr_node;
@@ -781,7 +782,7 @@ AcceleratorIntersectData AcceleratorKdTree::intersectS(const Ray &ray, float t_m
 	AcceleratorIntersectData accelerator_intersect_data;
 	const Bound::Cross cross = tree_bound.cross(ray, t_max);
 	if(!cross.crossed_) { return {}; }
-	const Vec3 inv_dir(1.f / ray.dir_.x_, 1.f / ray.dir_.y_, 1.f / ray.dir_.z_);
+	const Vec3 inv_dir(1.f / ray.dir_.x(), 1.f / ray.dir_.y(), 1.f / ray.dir_.z());
 	std::array<Stack, kd_max_stack_> stack;
 	const Node *far_child, *curr_node;
 	curr_node = nodes;
@@ -921,14 +922,14 @@ AcceleratorTsIntersectData AcceleratorKdTree::intersectTs(const Ray &ray, int ma
 	//To avoid division by zero
 	float inv_dir_x, inv_dir_y, inv_dir_z;
 
-	if(ray.dir_.x_ == 0.f) inv_dir_x = std::numeric_limits<float>::max();
-	else inv_dir_x = 1.f / ray.dir_.x_;
+	if(ray.dir_.x() == 0.f) inv_dir_x = std::numeric_limits<float>::max();
+	else inv_dir_x = 1.f / ray.dir_.x();
 
-	if(ray.dir_.y_ == 0.f) inv_dir_y = std::numeric_limits<float>::max();
-	else inv_dir_y = 1.f / ray.dir_.y_;
+	if(ray.dir_.y() == 0.f) inv_dir_y = std::numeric_limits<float>::max();
+	else inv_dir_y = 1.f / ray.dir_.y();
 
-	if(ray.dir_.z_ == 0.f) inv_dir_z = std::numeric_limits<float>::max();
-	else inv_dir_z = 1.f / ray.dir_.z_;
+	if(ray.dir_.z() == 0.f) inv_dir_z = std::numeric_limits<float>::max();
+	else inv_dir_z = 1.f / ray.dir_.z();
 
 	Vec3 inv_dir(inv_dir_x, inv_dir_y, inv_dir_z);
 	int depth = 0;
@@ -1026,7 +1027,7 @@ AcceleratorTsIntersectData AcceleratorKdTree::intersectTs(const Ray &ray, int ma
 						if(filtered.insert(primitive).second)
 						{
 							if(depth >= max_depth) return true;
-							const Point3 hit_point = ray.from_ + accelerator_intersect_data.t_hit_ * ray.dir_;
+							const Point3 hit_point{ray.from_ + accelerator_intersect_data.t_hit_ * ray.dir_};
 							const auto sp = primitive->getSurface(ray.differentials_.get(), hit_point, accelerator_intersect_data, nullptr, camera);
 							accelerator_intersect_data.transparent_color_ *= sp->getTransparency(ray.dir_, camera);
 							++depth;

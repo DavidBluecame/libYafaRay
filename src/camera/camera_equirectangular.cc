@@ -59,13 +59,13 @@ CameraRay EquirectangularCamera::shootRay(float px, float py, float lu, float lv
 	return {std::move(ray), true};
 }
 
-std::unique_ptr<Camera> EquirectangularCamera::factory(Logger &logger, ParamMap &params, const Scene &scene)
+const Camera * EquirectangularCamera::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Point3 from(0, 1, 0), to(0, 0, 0), up(0, 1, 1);
 	int resx = 320, resy = 200;
 	double aspect = 1.0;
 	float near_clip = 0.0f, far_clip = -1.0e38f;
-	std::string view_name = "";
+	std::string view_name;
 
 	params.getParam("from", from);
 	params.getParam("to", to);
@@ -76,14 +76,13 @@ std::unique_ptr<Camera> EquirectangularCamera::factory(Logger &logger, ParamMap 
 	params.getParam("nearClip", near_clip);
 	params.getParam("farClip", far_clip);
 
-	return std::unique_ptr<Camera>(new EquirectangularCamera(logger, from, to, up, resx, resy, aspect, near_clip, far_clip));
+	return new EquirectangularCamera(logger, from, to, up, resx, resy, aspect, near_clip, far_clip);
 }
 
 Point3 EquirectangularCamera::screenproject(const Point3 &p) const
 {
 	//FIXME
-	Point3 s;
-	Vec3 dir = Vec3(p) - Vec3(position_);
+	Vec3 dir{p - position_};
 	dir.normalize();
 
 	// project p to pixel plane:
@@ -91,11 +90,7 @@ Point3 EquirectangularCamera::screenproject(const Point3 &p) const
 	float dy = cam_y_ * dir;
 	float dz = cam_z_ * dir;
 
-	s.x_ = -dx / (4.f * math::num_pi * dz);
-	s.y_ = -dy / (4.f * math::num_pi * dz);
-	s.z_ = 0;
-
-	return s;
+	return {static_cast<float>(-dx / (4.f * math::num_pi * dz)), static_cast<float>(dy / (4.f * math::num_pi * dz)), 0.f};
 }
 
 END_YAFARAY

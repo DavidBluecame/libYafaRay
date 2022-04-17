@@ -31,7 +31,7 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Camera> Camera::factory(Logger &logger, ParamMap &params, const Scene &scene)
+const Camera * Camera::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
@@ -40,11 +40,11 @@ std::unique_ptr<Camera> Camera::factory(Logger &logger, ParamMap &params, const 
 	}
 	std::string type;
 	params.getParam("type", type);
-	if(type == "angular") return AngularCamera::factory(logger, params, scene);
-	else if(type == "perspective") return PerspectiveCamera::factory(logger, params, scene);
-	else if(type == "architect") return ArchitectCamera::factory(logger, params, scene);
-	else if(type == "orthographic") return OrthographicCamera::factory(logger, params, scene);
-	else if(type == "equirectangular") return EquirectangularCamera::factory(logger, params, scene);
+	if(type == "angular") return AngularCamera::factory(logger, scene, name, params);
+	else if(type == "perspective") return PerspectiveCamera::factory(logger, scene, name, params);
+	else if(type == "architect") return ArchitectCamera::factory(logger, scene, name, params);
+	else if(type == "orthographic") return OrthographicCamera::factory(logger, scene, name, params);
+	else if(type == "equirectangular") return EquirectangularCamera::factory(logger, scene, name, params);
 	else return nullptr;
 }
 
@@ -61,10 +61,10 @@ Camera::Camera(Logger &logger, const Point3 &pos, const Point3 &look, const Poin
 	cam_z_.normalize();
 
 	near_plane_.n_ = cam_z_;
-	near_plane_.p_ = Vec3(position_) + cam_z_ * near_clip_distance;
+	near_plane_.p_ = position_ + cam_z_ * near_clip_distance;
 
 	far_plane_.n_ = cam_z_;
-	far_plane_.p_ = Vec3(position_) + cam_z_ * far_clip_distance;
+	far_plane_.p_ = position_ + cam_z_ * far_clip_distance;
 
 	near_clip_ = near_clip_distance;
 	far_clip_ = far_clip_distance;

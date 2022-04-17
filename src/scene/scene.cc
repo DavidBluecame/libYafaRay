@@ -39,6 +39,8 @@
 #include "image/image_output.h"
 #include "render/render_view.h"
 #include "render/progress_bar.h"
+#include "image/image_manipulation.h"
+#include <limits>
 
 BEGIN_YAFARAY
 
@@ -85,9 +87,7 @@ Scene::Scene(Logger &logger) : logger_(logger)
 	render_control_.setDifferentialRaysEnabled(false);	//By default, disable ray differential calculations. Only if at least one texture uses them, then enable differentials.
 	createDefaultMaterial();
 
-#ifndef HAVE_OPENCV
-	logger_.logWarning("libYafaRay built without OpenCV support. The following functionality will not work: image output denoise, background IBL blur, object/face edge render layers, toon render layer.");
-#endif
+	image_manipulation::logWarningsMissingLibraries(logger_);
 }
 
 //This is just to avoid compilation error "error: invalid application of ‘sizeof’ to incomplete type ‘yafaray::Accelerator’" because the destructor needs to know the type of any shared_ptr or unique_ptr objects
@@ -99,11 +99,11 @@ void Scene::createDefaultMaterial()
 	std::list<ParamMap> nodes_params;
 	//Note: keep the std::string or the parameter will be created incorrectly as a bool. This should improve with the new C++17 string literals, but for now with C++11 this should be done.
 	param_map["type"] = std::string("shinydiffusemat");
-	const Material *material = createMaterial("YafaRay_Default_Material", param_map, nodes_params);
+	const std::unique_ptr<const Material> *material = createMaterial("YafaRay_Default_Material", param_map, nodes_params);
 	setCurrentMaterial(material);
 }
 
-void Scene::setCurrentMaterial(const Material *material)
+void Scene::setCurrentMaterial(const std::unique_ptr<const Material> *material)
 {
 	if(material) creation_state_.current_material_ = material;
 	else creation_state_.current_material_ = getMaterial("YafaRay_Default_Material");
@@ -312,9 +312,9 @@ std::shared_ptr<T> Scene::findMapItem(const std::string &name, const std::map<st
 	else return nullptr;
 }
 
-Material *Scene::getMaterial(const std::string &name) const
+const std::unique_ptr<const Material> * Scene::getMaterial(const std::string &name) const
 {
-	return Scene::findMapItem<Material>(name, materials_);
+	return Scene::findMapItem<std::unique_ptr<const Material>>(name, materials_);
 }
 
 Texture *Scene::getTexture(const std::string &name) const
@@ -322,9 +322,9 @@ Texture *Scene::getTexture(const std::string &name) const
 	return Scene::findMapItem<Texture>(name, textures_);
 }
 
-Camera *Scene::getCamera(const std::string &name) const
+const Camera * Scene::getCamera(const std::string &name) const
 {
-	return Scene::findMapItem<Camera>(name, cameras_);
+	return Scene::findMapItem<const Camera>(name, cameras_);
 }
 
 Light *Scene::getLight(const std::string &name) const
@@ -332,9 +332,9 @@ Light *Scene::getLight(const std::string &name) const
 	return Scene::findMapItem<Light>(name, lights_);
 }
 
-Background* Scene::getBackground(const std::string &name) const
+const Background * Scene::getBackground(const std::string &name) const
 {
-	return Scene::findMapItem<Background>(name, backgrounds_);
+	return Scene::findMapItem<const Background>(name, backgrounds_);
 }
 
 Integrator *Scene::getIntegrator(const std::string &name) const
@@ -360,10 +360,9 @@ bool Scene::removeOutput(const std::string &name)
 	return true;
 }
 
-Light *Scene::createLight(const std::string &name, ParamMap &params)
+Light *Scene::createLight(const std::string &name, const ParamMap &params)
 {
 	std::string pname = "Light";
-	params["name"] = std::string(name);
 	if(lights_.find(name) != lights_.end())
 	{
 		logWarnExist(logger_, pname, name); return nullptr;
@@ -373,7 +372,7 @@ Light *Scene::createLight(const std::string &name, ParamMap &params)
 	{
 		logErrNoType(logger_, pname, name, type); return nullptr;
 	}
-	auto light = Light::factory(logger_, params, *this);
+	auto light = std::unique_ptr<Light>(Light::factory(logger_, *this, name, params));
 	if(light)
 	{
 		lights_[name] = std::move(light);
@@ -386,139 +385,137 @@ Light *Scene::createLight(const std::string &name, ParamMap &params)
 	return nullptr;
 }
 
-Material *Scene::createMaterial(const std::string &name, ParamMap &params, std::list<ParamMap> &nodes_params)
+std::unique_ptr<const Material> * Scene::createMaterial(const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params)
 {
 	std::string pname = "Material";
-	params["name"] = std::string(name);
 	if(materials_.find(name) != materials_.end())
 	{
-		logWarnExist(logger_, pname, name); return nullptr;
+		logger_.logDebug("Scene: ", pname, " \"", name, "\" already exists, replacing.");
+	}
+	else
+	{
+		materials_[name] = std::unique_ptr<std::unique_ptr<const Material>>(new std::unique_ptr<const Material>());
 	}
 	std::string type;
-	if(! params.getParam("type", type))
+	if(!params.getParam("type", type))
 	{
 		logErrNoType(logger_, pname, name, type); return nullptr;
 	}
-	params["name"] = name;
-	auto material = Material::factory(logger_, params, nodes_params, *this);
+	auto material = std::unique_ptr<const Material>(Material::factory(logger_, *this, name, params, nodes_params));
 	if(material)
 	{
-		materials_[name] = std::move(material);
+		*(materials_[name]) = std::move(material);
 		if(logger_.isVerbose()) logInfoVerboseSuccess(logger_, pname, name, type);
 		return materials_[name].get();
+		creation_state_.changes_ |= CreationState::Flags::CMaterial;
 	}
 	logErrOnCreate(logger_, pname, name, type);
 	return nullptr;
 }
 
 template <typename T>
-T *Scene::createMapItem(Logger &logger, const std::string &name, const std::string &class_name, ParamMap &params, std::map<std::string, std::unique_ptr<T>> &map, Scene *scene, bool check_type_exists)
+T *Scene::createMapItem(Logger &logger, const std::string &name, const std::string &class_name, const ParamMap &params, std::map<std::string, std::unique_ptr<T>> &map, Scene *scene, bool check_type_exists)
 {
-	std::string pname = class_name;
-	params["name"] = std::string(name);
 	if(map.find(name) != map.end())
 	{
-		logWarnExist(logger, pname, name); return nullptr;
+		logWarnExist(logger, class_name, name); return nullptr;
 	}
 	std::string type;
 	if(! params.getParam("type", type))
 	{
 		if(check_type_exists)
 		{
-			logErrNoType(logger, pname, name, type);
+			logErrNoType(logger, class_name, name, type);
 			return nullptr;
 		}
 	}
-	std::unique_ptr<T> item = T::factory(logger, params, *scene);
+	std::unique_ptr<T> item(T::factory(logger, *scene, name, params));
 	if(item)
 	{
 		map[name] = std::move(item);
-		if(logger.isVerbose()) logInfoVerboseSuccess(logger, pname, name, type);
+		if(logger.isVerbose()) logInfoVerboseSuccess(logger, class_name, name, type);
 		return map[name].get();
 	}
-	logErrOnCreate(logger, pname, name, type);
+	logErrOnCreate(logger, class_name, name, type);
 	return nullptr;
 }
 
 template <typename T>
-std::shared_ptr<T> Scene::createMapItem(Logger &logger, const std::string &name, const std::string &class_name, ParamMap &params, std::map<std::string, std::shared_ptr<T>> &map, Scene *scene, bool check_type_exists)
+std::shared_ptr<T> Scene::createMapItem(Logger &logger, const std::string &name, const std::string &class_name, const ParamMap &params, std::map<std::string, std::shared_ptr<T>> &map, Scene *scene, bool check_type_exists)
 {
-	std::string pname = class_name;
-	params["name"] = std::string(name);
 	if(map.find(name) != map.end())
 	{
-		logWarnExist(logger, pname, name); return nullptr;
+		logWarnExist(logger, class_name, name); return nullptr;
 	}
 	std::string type;
 	if(! params.getParam("type", type))
 	{
 		if(check_type_exists)
 		{
-			logErrNoType(logger, pname, name, type);
+			logErrNoType(logger, class_name, name, type);
 			return nullptr;
 		}
 	}
-	std::shared_ptr<T> item = T::factory(logger, params, *scene);
+	std::shared_ptr<T> item(T::factory(logger, *scene, name, params));
 	if(item)
 	{
 		map[name] = std::move(item);
-		if(logger.isVerbose()) logInfoVerboseSuccess(logger, pname, name, type);
+		if(logger.isVerbose()) logInfoVerboseSuccess(logger, class_name, name, type);
 		return map[name];
 	}
-	logErrOnCreate(logger, pname, name, type);
+	logErrOnCreate(logger, class_name, name, type);
 	return nullptr;
 }
 
-ImageOutput *Scene::createOutput(const std::string &name, ParamMap &params)
+ImageOutput *Scene::createOutput(const std::string &name, const ParamMap &params)
 {
-	std::string pname = "ColorOutput";
-	params["name"] = std::string(name);
+	std::string class_name = "ColorOutput";
 	if(outputs_.find(name) != outputs_.end())
 	{
-		logWarnExist(logger_, pname, name); return nullptr;
+		logWarnExist(logger_, class_name, name); return nullptr;
 	}
-	std::unique_ptr<ImageOutput> item = ImageOutput::factory(logger_, params, *this);
+	std::unique_ptr<ImageOutput> item(ImageOutput::factory(logger_, *this, name, params));
 	if(item)
 	{
 		outputs_[name] = std::move(item);
-		if(logger_.isVerbose()) logInfoVerboseSuccess(logger_, pname, name, "");
+		if(logger_.isVerbose()) logInfoVerboseSuccess(logger_, class_name, name, "");
 		return outputs_[name].get();
 	}
-	logErrOnCreate(logger_, pname, name, "");
+	logErrOnCreate(logger_, class_name, name, "");
 	return nullptr;
 }
 
-Texture *Scene::createTexture(const std::string &name, ParamMap &params)
+Texture *Scene::createTexture(const std::string &name, const ParamMap &params)
 {
 	return createMapItem<Texture>(logger_, name, "Texture", params, textures_, this);
 }
 
-Background *Scene::createBackground(const std::string &name, ParamMap &params)
+const Background * Scene::createBackground(const std::string &name, const ParamMap &params)
 {
-	return createMapItem<Background>(logger_, name, "Background", params, backgrounds_, this);
+	return createMapItem<const Background>(logger_, name, "Background", params, backgrounds_, this);
 }
 
-Camera *Scene::createCamera(const std::string &name, ParamMap &params)
+const Camera *Scene::createCamera(const std::string &name, const ParamMap &params)
 {
-	return createMapItem<Camera>(logger_, name, "Camera", params, cameras_, this);
+	return createMapItem<const Camera>(logger_, name, "Camera", params, cameras_, this);
 }
 
-Integrator *Scene::createIntegrator(const std::string &name, ParamMap &params)
+Integrator *Scene::createIntegrator(const std::string &name, const ParamMap &params)
 {
 	return createMapItem<Integrator>(logger_, name, "Integrator", params, integrators_, this);
 }
 
-VolumeRegion *Scene::createVolumeRegion(const std::string &name, ParamMap &params)
+VolumeRegion *Scene::createVolumeRegion(const std::string &name, const ParamMap &params)
 {
 	return createMapItem<VolumeRegion>(logger_, name, "VolumeRegion", params, volume_regions_, this);
 }
 
-RenderView *Scene::createRenderView(const std::string &name, ParamMap &params)
+RenderView *Scene::createRenderView(const std::string &name, const ParamMap &params)
 {
 	return createMapItem<RenderView>(logger_, name, "RenderView", params, render_views_, this, false);
 }
 
-std::shared_ptr<Image> Scene::createImage(const std::string &name, ParamMap &params)
+std::shared_ptr<Image> Scene::createImage(const std::string &name, const ParamMap &params)
 {
 	return createMapItem<Image>(logger_, name, "Image", params, images_, this);
 }
@@ -617,7 +614,7 @@ bool Scene::setupSceneRenderParams(Scene &scene, const ParamMap &params)
 	setMaskParams(params);
 	setEdgeToonParams(params);
 
-	image_film_ = ImageFilm::factory(logger_, params, this);
+	image_film_ = std::unique_ptr<ImageFilm>(ImageFilm::factory(logger_, params, this));
 
 	params.getParam("filter_type", name); // AA filter type
 	std::stringstream aa_settings;
@@ -848,16 +845,13 @@ void Scene::setEdgeToonParams(const ParamMap &params)
 	edge_params.thickness_ = object_edge_thickness;
 	edge_params.threshold_ = object_edge_threshold;
 	edge_params.smoothness_ = object_edge_smoothness;
-	edge_params.toon_color_[0] = toon_edge_color.r_;
-	edge_params.toon_color_[1] = toon_edge_color.g_;
-	edge_params.toon_color_[2] = toon_edge_color.b_;
+	edge_params.toon_color_ = toon_edge_color;
 	edge_params.toon_pre_smooth_ = toon_pre_smooth;
 	edge_params.toon_quantization_ = toon_quantization;
 	edge_params.toon_post_smooth_ = toon_post_smooth;
 	edge_params.face_thickness_ = faces_edge_thickness;
 	edge_params.face_threshold_ = faces_edge_threshold;
 	edge_params.face_smoothness_ = faces_edge_smoothness;
-
 	setEdgeToonParams(edge_params);
 }
 
@@ -980,7 +974,7 @@ int Scene::addUv(float u, float v)
 	return current_object_->addUvValue({u, v});
 }
 
-Object *Scene::createObject(const std::string &name, ParamMap &params)
+Object *Scene::createObject(const std::string &name, const ParamMap &params)
 {
 	std::string pname = "Object";
 	if(objects_.find(name) != objects_.end())
@@ -994,7 +988,7 @@ Object *Scene::createObject(const std::string &name, ParamMap &params)
 		logErrNoType(logger_, pname, name, type);
 		return nullptr;
 	}
-	std::unique_ptr<Object> object = Object::factory(logger_, params, *this);
+	std::unique_ptr<Object> object(Object::factory(logger_, *this, name, params));
 	if(object)
 	{
 		object->setName(name);
@@ -1054,14 +1048,14 @@ bool Scene::updateObjects()
 	params["num_primitives"] = static_cast<int>(primitives.size());
 	params["accelerator_threads"] = getNumThreads();
 
-	accelerator_ = Accelerator::factory(logger_, primitives, params);
+	accelerator_ = std::unique_ptr<const Accelerator>(Accelerator::factory(logger_, primitives, params));
 	scene_bound_ = accelerator_->getBound();
-	if(logger_.isVerbose()) logger_.logVerbose("Scene: New scene bound is: ", "(", scene_bound_.a_.x_, ", ", scene_bound_.a_.y_, ", ", scene_bound_.a_.z_, "), (", scene_bound_.g_.x_, ", ", scene_bound_.g_.y_, ", ", scene_bound_.g_.z_, ")");
+	if(logger_.isVerbose()) logger_.logVerbose("Scene: New scene bound is: ", "(", scene_bound_.a_.x(), ", ", scene_bound_.a_.y(), ", ", scene_bound_.a_.z(), "), (", scene_bound_.g_.x(), ", ", scene_bound_.g_.y(), ", ", scene_bound_.g_.z(), ")");
 
 	if(shadow_bias_auto_) shadow_bias_ = shadow_bias_global;
 	if(ray_min_dist_auto_) ray_min_dist_ = min_raydist_global;
 
-	logger_.logInfo("Scene: total scene dimensions: X=", scene_bound_.longX(), ", Y=", scene_bound_.longY(), ", Z=", scene_bound_.longZ(), ", volume=", scene_bound_.vol(), ", Shadow Bias=", shadow_bias_, (shadow_bias_auto_ ? " (auto)" : ""), ", Ray Min Dist=", ray_min_dist_, (ray_min_dist_auto_ ? " (auto)" : ""));
+	logger_.logInfo("Scene: total scene dimensions: X=", scene_bound_.longX(), ", y=", scene_bound_.longY(), ", z=", scene_bound_.longZ(), ", volume=", scene_bound_.vol(), ", Shadow Bias=", shadow_bias_, (shadow_bias_auto_ ? " (auto)" : ""), ", Ray Min Dist=", ray_min_dist_, (ray_min_dist_auto_ ? " (auto)" : ""));
 	return true;
 }
 

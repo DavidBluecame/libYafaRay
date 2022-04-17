@@ -33,22 +33,22 @@ class Texture;
 class TextureBackground final : public Background
 {
 	public:
-		static std::unique_ptr<Background> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static const Background * factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		enum Projection { Spherical = 0, Angular };
-		TextureBackground(Logger &logger, const Texture *texture, Projection proj, float bpower, float rot, bool ibl, float ibl_blur, bool with_caustic);
-		virtual Rgb operator()(const Vec3 &dir, bool use_ibl_blur = false) const override;
-		virtual Rgb eval(const Vec3 &dir, bool use_ibl_blur = false) const override;
+		TextureBackground(Logger &logger, const Texture *texture, Projection proj, float bpower, float rot, float ibl_blur);
+		Rgb eval(const Vec3 &dir, bool use_ibl_blur) const override;
 
 		const Texture *tex_;
 		Projection project_;
 		float power_;
 		float rotation_;
 		float sin_r_, cos_r_;
+		bool with_ibl_blur_ = false;
 		float ibl_blur_mipmap_level_; //Calculated based on the IBL_Blur parameter. As mipmap levels have half size each, this parameter is not linear
 };
 
 END_YAFARAY
 
-#endif //YAFARAY_BACKGROUND_TEXTURE_H
+#endif //LIBYAFARAY_BACKGROUND_TEXTURE_H

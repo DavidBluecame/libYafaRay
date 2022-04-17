@@ -19,6 +19,8 @@
  */
 
 #include "background/background_sunsky.h"
+
+#include <cmath>
 #include "color/spectrum_sun.h"
 #include "common/logger.h"
 #include "common/param.h"
@@ -28,23 +30,20 @@
 
 BEGIN_YAFARAY
 
-// sunsky, from 'A Practical Analytic Model For DayLight" by Preetham, Shirley & Smits.
+// sunsky, from 'A Practical Analytic Model For DayLight' by Preetham, Shirley & Smits.
 // http://www.cs.utah.edu/vissim/papers/sunsky/
 // based on the actual code by Brian Smits
 // and a thread on gamedev.net on skycolor algorithms
 
 
-SunSkyBackground::SunSkyBackground(Logger &logger, const Point3 dir, float turb, float a_var, float b_var, float c_var, float d_var, float e_var, float pwr, bool ibl, bool with_caustic): Background(logger), power_(pwr)
+SunSkyBackground::SunSkyBackground(Logger &logger, const Point3 &dir, float turb, float a_var, float b_var, float c_var, float d_var, float e_var, float pwr) : Background(logger), power_(pwr)
 {
-	with_ibl_ = ibl;
-	shoot_caustic_ = with_caustic;
-
-	sun_dir_.set(dir.x_, dir.y_, dir.z_);
+	sun_dir_.set(dir.x(), dir.y(), dir.z());
 	sun_dir_.normalize();
-	theta_s_ = math::acos(sun_dir_.z_);
+	theta_s_ = math::acos(sun_dir_.z());
 	theta_2_ = theta_s_ * theta_s_;
 	theta_3_ = theta_2_ * theta_s_;
-	phi_s_ = atan2(sun_dir_.y_, sun_dir_.x_);
+	phi_s_ = std::atan2(sun_dir_.y(), sun_dir_.x());
 	t_ = turb;
 	t_2_ = turb * turb;
 	const double chi = (4.0 / 9.0 - t_ / 120.0) * (math::num_pi - 2.0 * theta_s_);
@@ -78,12 +77,7 @@ SunSkyBackground::SunSkyBackground(Logger &logger, const Point3 dir, float turb,
 	perez_y_[4] = (-0.01092 * t_ + 0.05291) * e_var;
 }
 
-SunSkyBackground::~SunSkyBackground()
-{
-	// Empty
-}
-
-double SunSkyBackground::perezFunction(const double *lam, double theta, double gamma, double lvz) const
+double SunSkyBackground::perezFunction(const std::array<double, 5> &lam, double theta, double gamma, double lvz) const
 {
 	double e_1, e_2, e_3, e_4;
 	if(lam[1] <= 230.)
@@ -123,7 +117,7 @@ inline Rgb SunSkyBackground::getSkyCol(const Vec3 &dir) const
 	double hfade = 1, nfade = 1;
 
 	Rgb skycolor(0.0);
-	double theta = math::acos(iw.z_);
+	double theta = math::acos(iw.z());
 	if(theta > (0.5 * math::num_pi))
 	{
 		// this stretches horizon color below horizon, must be possible to do something better...
@@ -144,10 +138,10 @@ inline Rgb SunSkyBackground::getSkyCol(const Vec3 &dir) const
 		}
 	}
 	double phi;
-	if((iw.y_ == 0.0) && (iw.x_ == 0.0))
+	if((iw.y() == 0.0) && (iw.x() == 0.0))
 		phi = math::num_pi * 0.5;
 	else
-		phi = atan2(iw.y_, iw.x_);
+		phi = std::atan2(iw.y(), iw.x());
 
 	const double gamma = angleBetween(theta, phi);
 	// Compute xyY values
@@ -169,12 +163,7 @@ inline Rgb SunSkyBackground::getSkyCol(const Vec3 &dir) const
 	return skycolor;
 }
 
-Rgb SunSkyBackground::operator()(const Vec3 &dir, bool from_postprocessed) const
-{
-	return power_ * getSkyCol(dir);
-}
-
-Rgb SunSkyBackground::eval(const Vec3 &dir, bool from_postprocessed) const
+Rgb SunSkyBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
 {
 	return power_ * getSkyCol(dir);
 }
@@ -235,7 +224,7 @@ Rgb SunSkyBackground::computeAttenuatedSunlight(float theta, int turbidity)
 	};
 }
 
-std::unique_ptr<Background> SunSkyBackground::factory(Logger &logger, ParamMap &params, Scene &scene)
+const Background * SunSkyBackground::factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Point3 dir(1, 1, 1);	// same as sunlight, position interpreted as direction
 	float turb = 4.0;	// turbidity of atmosphere
@@ -274,7 +263,7 @@ std::unique_ptr<Background> SunSkyBackground::factory(Logger &logger, ParamMap &
 	params.getParam("with_caustic", caus);
 	params.getParam("with_diffuse", diff);
 
-	auto new_sunsky = std::unique_ptr<SunSkyBackground>(new SunSkyBackground(logger, dir, turb, av, bv, cv, dv, ev, power, bgl, true));
+	auto new_sunsky = new SunSkyBackground(logger, dir, turb, av, bv, cv, dv, ev, power);
 
 	if(bgl)
 	{
@@ -286,12 +275,12 @@ std::unique_ptr<Background> SunSkyBackground::factory(Logger &logger, ParamMap &
 		bgp["with_diffuse"] = diff;
 
 		Light *bglight = scene.createLight("sunsky_bgLight", bgp);
-		bglight->setBackground(new_sunsky.get());
+		bglight->setBackground(new_sunsky);
 	}
 
 	if(add_sun)
 	{
-		Rgb suncol = computeAttenuatedSunlight(math::acos(std::abs(dir.z_)), turb);//(*new_sunsky)(vector3d_t(dir.x, dir.y, dir.z));
+		Rgb suncol = computeAttenuatedSunlight(math::acos(std::abs(dir.z())), turb);//(*new_sunsky)(vector3d_t(dir.x, dir.y, dir.z));
 		double angle = 0.27;
 		double cos_angle = math::cos(math::degToRad(angle));
 		float invpdf = (2.f * math::num_pi * (1.f - cos_angle));
@@ -301,7 +290,7 @@ std::unique_ptr<Background> SunSkyBackground::factory(Logger &logger, ParamMap &
 
 		ParamMap p;
 		p["type"] = std::string("sunlight");
-		p["direction"] = Point3(dir[0], dir[1], dir[2]);
+		p["direction"] = dir;
 		p["color"] = suncol;
 		p["angle"] = Parameter(angle);
 		p["power"] = Parameter(pw);

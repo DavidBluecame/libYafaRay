@@ -31,15 +31,14 @@ BEGIN_YAFARAY
 class JpgFormat final : public Format
 {
 	public:
-		static std::unique_ptr<Format> factory(Logger &logger, ParamMap &params);
+		explicit JpgFormat(Logger &logger) : Format(logger) { }
 
 	private:
-		JpgFormat(Logger &logger) : Format(logger) { }
-		virtual std::string getFormatName() const override { return "JpgFormat"; }
-		virtual std::unique_ptr<Image> loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma) override;
-		virtual bool saveToFile(const std::string &name, const ImageLayer &image_layer, ColorSpace color_space, float gamma, bool alpha_premultiply) override;
-		virtual bool supportsAlpha() const override { return false; }
-		virtual bool saveAlphaChannelOnlyToFile(const std::string &name, const ImageLayer &image_layer) override;
+		std::string getFormatName() const override { return "JpgFormat"; }
+		Image * loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma) override;
+		bool saveToFile(const std::string &name, const ImageLayer &image_layer, ColorSpace color_space, float gamma, bool alpha_premultiply) override;
+		bool supportsAlpha() const override { return false; }
+		bool saveAlphaChannelOnlyToFile(const std::string &name, const ImageLayer &image_layer) override;
 };
 
 END_YAFARAY

@@ -70,7 +70,7 @@ Rgb MonteCarloIntegrator::estimateAllDirectLight(RandomGenerator &random_generat
 Rgb MonteCarloIntegrator::estimateOneDirectLight(RandomGenerator &random_generator, int thread_id, bool chromatic_enabled, float wavelength, const SurfacePoint &sp, const Vec3 &wo, int n, const RayDivision &ray_division, const PixelSamplingData &pixel_sampling_data) const
 {
 	const int num_lights = lights_.size();
-	if(num_lights == 0) return {0.f};
+	if(num_lights == 0) return Rgb{0.f};
 	Halton hal_2(2, image_film_->getBaseSamplingOffset() + correlative_sample_number_[thread_id] - 1); //Probably with this change the parameter "n" is no longer necessary, but I will keep it just in case I have to revert this change!
 	const int lnum = std::min(static_cast<int>(hal_2.getNext() * static_cast<float>(num_lights)), num_lights - 1);
 	++correlative_sample_number_[thread_id];
@@ -115,18 +115,18 @@ Rgb MonteCarloIntegrator::diracLight(RandomGenerator &random_generator, ColorLay
 		const float angle_light_normal = sp.material_->isFlat() ? 1.f : std::abs(sp.n_ * light_ray.dir_);	//If the material has the special attribute "isFlat()" then we will not multiply the surface reflection by the cosine of the angle between light and normal
 		if(!shadowed || color_layer_diffuse_no_shadow)
 		{
-			if(!shadowed && color_layer_shadow) *color_layer_shadow += Rgb(1.f);
+			if(!shadowed && color_layer_shadow) *color_layer_shadow += Rgba{1.f};
 			const Rgb surf_col = sp.eval(wo, light_ray.dir_, BsdfFlags::All);
-			const Rgb transmit_col = vol_integrator_ ? vol_integrator_->transmittance(random_generator, light_ray) : 1.f;
-			const Rgba tmp_col_no_shadow = surf_col * lcol * angle_light_normal * transmit_col;
+			const Rgb transmit_col = vol_integrator_ ? vol_integrator_->transmittance(random_generator, light_ray) : Rgb{1.f};
+			const Rgba tmp_col_no_shadow{surf_col * lcol * angle_light_normal * transmit_col};
 			if(tr_shad_ && cast_shadows) lcol *= scol;
 			if(color_layers)
 			{
 				if(color_layer_diffuse_no_shadow) *color_layer_diffuse_no_shadow += tmp_col_no_shadow;
 				if(!shadowed)
 				{
-					if(color_layer_diffuse) *color_layer_diffuse += sp.eval(wo, light_ray.dir_, BsdfFlags::Diffuse) * lcol * angle_light_normal * transmit_col;
-					if(color_layer_glossy) *color_layer_glossy += sp.eval(wo, light_ray.dir_, BsdfFlags::Glossy, true) * lcol * angle_light_normal * transmit_col;
+					if(color_layer_diffuse) *color_layer_diffuse += Rgba{sp.eval(wo, light_ray.dir_, BsdfFlags::Diffuse) * lcol * angle_light_normal * transmit_col};
+					if(color_layer_glossy) *color_layer_glossy += Rgba{sp.eval(wo, light_ray.dir_, BsdfFlags::Glossy, true) * lcol * angle_light_normal * transmit_col};
 				}
 			}
 			if(!shadowed) col += surf_col * lcol * angle_light_normal * transmit_col;
@@ -140,17 +140,17 @@ Rgb MonteCarloIntegrator::diracLight(RandomGenerator &random_generator, ColorLay
 				float mask_obj_index = 0.f, mask_mat_index = 0.f;
 				if(const Object *casting_object = shadow_casting_primitive->getObject()) mask_obj_index = casting_object->getAbsObjectIndex();    //Object index of the object casting the shadow
 				if(const Material *casting_material = shadow_casting_primitive->getMaterial()) mask_mat_index = casting_material->getAbsMaterialIndex();    //Material index of the object casting the shadow
-				if(color_layer_mat_index_mask_shadow && mask_mat_index == mask_params_.mat_index_) *color_layer_mat_index_mask_shadow += Rgb(1.f);
-				if(color_layer_obj_index_mask_shadow && mask_obj_index == mask_params_.obj_index_) *color_layer_obj_index_mask_shadow += Rgb(1.f);
+				if(color_layer_mat_index_mask_shadow && mask_mat_index == mask_params_.mat_index_) *color_layer_mat_index_mask_shadow += Rgba{1.f};
+				if(color_layer_obj_index_mask_shadow && mask_obj_index == mask_params_.obj_index_) *color_layer_obj_index_mask_shadow += Rgba{1.f};
 			}
 			if(color_layers->getFlags().hasAny(LayerDef::Flags::DebugLayers))
 			{
-				if(Rgba *color_layer = color_layers->find(LayerDef::DebugLightEstimationLightDirac)) *color_layer += col;
+				if(Rgba *color_layer = color_layers->find(LayerDef::DebugLightEstimationLightDirac)) *color_layer += Rgba{col};
 			}
 		}
 		return col;
 	}
-	else return {0.f};
+	else return Rgb{0.f};
 }
 
 Rgb MonteCarloIntegrator::areaLightSampleLight(Halton &hal_2, Halton &hal_3, RandomGenerator &random_generator, ColorLayers *color_layers, const Light *light, const Vec3 &wo, const SurfacePoint &sp, bool cast_shadows, unsigned int num_samples, float inv_num_samples) const
@@ -216,7 +216,7 @@ Rgb MonteCarloIntegrator::areaLightSampleLight(Halton &hal_2, Halton &hal_3, Ran
 					ls.col_ *= transmit_col;
 				}
 				const Rgb surf_col = sp.eval(wo, light_ray.dir_, BsdfFlags::All);
-				if(layer_shadow && !shadowed && ls.pdf_ > 1e-6f) layer_shadow->accum_ += Rgb(1.f);
+				if(layer_shadow && !shadowed && ls.pdf_ > 1e-6f) layer_shadow->accum_ += Rgba{1.f};
 				const float angle_light_normal = sp.material_->isFlat() ? 1.f : std::abs(sp.n_ * light_ray.dir_);    //If the material has the special attribute "isFlat()" then we will not multiply the surface reflection by the cosine of the angle between light and normal
 				float w = 1.f;
 				if(light->canIntersect())
@@ -234,13 +234,13 @@ Rgb MonteCarloIntegrator::areaLightSampleLight(Halton &hal_2, Halton &hal_3, Ran
 					if(layer_diffuse || layer_diffuse_no_shadow)
 					{
 						const Rgb tmp_col_no_light_color = sp.eval(wo, light_ray.dir_, BsdfFlags::Diffuse) * angle_light_normal * w / ls.pdf_;
-						if(layer_diffuse_no_shadow) layer_diffuse_no_shadow->accum_ += tmp_col_no_light_color * ls_col_no_shadow;
-						if(layer_diffuse && !shadowed && ls.pdf_ > 1e-6f) layer_diffuse->accum_ += tmp_col_no_light_color * ls.col_;
+						if(layer_diffuse_no_shadow) layer_diffuse_no_shadow->accum_ += Rgba{tmp_col_no_light_color * ls_col_no_shadow};
+						if(layer_diffuse && !shadowed && ls.pdf_ > 1e-6f) layer_diffuse->accum_ += Rgba{tmp_col_no_light_color * ls.col_};
 					}
 					if(layer_glossy)
 					{
 						const Rgb tmp_col = sp.eval(wo, light_ray.dir_, BsdfFlags::Glossy, true) * ls.col_ * angle_light_normal * w / ls.pdf_;
-						if(!shadowed && ls.pdf_ > 1e-6f) layer_glossy->accum_ += tmp_col;
+						if(!shadowed && ls.pdf_ > 1e-6f) layer_glossy->accum_ += Rgba{tmp_col};
 					}
 				}
 				if(!shadowed && ls.pdf_ > 1e-6f) col += surf_col * ls.col_ * angle_light_normal * w / ls.pdf_;
@@ -250,8 +250,8 @@ Rgb MonteCarloIntegrator::areaLightSampleLight(Halton &hal_2, Halton &hal_3, Ran
 				float mask_obj_index = 0.f, mask_mat_index = 0.f;
 				if(const Object *casting_object = shadow_casting_primitive->getObject()) mask_obj_index = casting_object->getAbsObjectIndex();    //Object index of the object casting the shadow
 				if(const Material *casting_material = shadow_casting_primitive->getMaterial()) mask_mat_index = casting_material->getAbsMaterialIndex();    //Material index of the object casting the shadow
-				if(layer_mat_index_mask_shadow && mask_mat_index == mask_params_.mat_index_) layer_mat_index_mask_shadow->accum_ += Rgb(1.f);
-				if(layer_obj_index_mask_shadow && mask_obj_index == mask_params_.obj_index_) layer_obj_index_mask_shadow->accum_ += Rgb(1.f);
+				if(layer_mat_index_mask_shadow && mask_mat_index == mask_params_.mat_index_) layer_mat_index_mask_shadow->accum_ += Rgba{1.f};
+				if(layer_obj_index_mask_shadow && mask_obj_index == mask_params_.obj_index_) layer_obj_index_mask_shadow->accum_ += Rgba{1.f};
 			}
 		}
 	}
@@ -275,7 +275,7 @@ Rgb MonteCarloIntegrator::areaLightSampleLight(Halton &hal_2, Halton &hal_3, Ran
 		}
 		if(color_layers->getFlags().hasAny(LayerDef::Flags::DebugLayers))
 		{
-			if(Rgba *color_layer = color_layers->find(LayerDef::DebugLightEstimationLightSampling)) *color_layer += col_result;
+			if(Rgba *color_layer = color_layers->find(LayerDef::DebugLightEstimationLightSampling)) *color_layer += Rgba{col_result};
 		}
 	}
 	return col_result;
@@ -347,13 +347,13 @@ Rgb MonteCarloIntegrator::areaLightSampleMaterial(Halton &hal_2, Halton &hal_3, 
 						if(layer_diffuse || layer_diffuse_no_shadow)
 						{
 							const Rgb tmp_col = sp.sample(wo, b_ray.dir_, s, W, chromatic_enabled, wavelength, camera_) * lcol * w * W;
-							if(layer_diffuse_no_shadow) layer_diffuse_no_shadow->accum_ += tmp_col;
-							if(layer_diffuse && !shadowed && light_pdf > 1e-6f && s.sampled_flags_.hasAny(BsdfFlags::Diffuse)) layer_diffuse->accum_ += tmp_col;
+							if(layer_diffuse_no_shadow) layer_diffuse_no_shadow->accum_ += Rgba{tmp_col};
+							if(layer_diffuse && !shadowed && light_pdf > 1e-6f && s.sampled_flags_.hasAny(BsdfFlags::Diffuse)) layer_diffuse->accum_ += Rgba{tmp_col};
 						}
 						if(layer_glossy)
 						{
 							const Rgb tmp_col = sp.sample(wo, b_ray.dir_, s, W, chromatic_enabled, wavelength, camera_) * lcol * w * W;
-							if(!shadowed && light_pdf > 1e-6f && s.sampled_flags_.hasAny(BsdfFlags::Glossy)) layer_glossy->accum_ += tmp_col;
+							if(!shadowed && light_pdf > 1e-6f && s.sampled_flags_.hasAny(BsdfFlags::Glossy)) layer_glossy->accum_ += Rgba{tmp_col};
 						}
 					}
 					if(!shadowed && light_pdf > 1e-6f) col += surf_col * lcol * w * W;
@@ -374,12 +374,12 @@ Rgb MonteCarloIntegrator::areaLightSampleMaterial(Halton &hal_2, Halton &hal_3, 
 			}
 			if(color_layers->getFlags().hasAny(LayerDef::Flags::DebugLayers))
 			{
-				if(Rgba *color_layer = color_layers->find(LayerDef::DebugLightEstimationMatSampling)) *color_layer += col_result;
+				if(Rgba *color_layer = color_layers->find(LayerDef::DebugLightEstimationMatSampling)) *color_layer += Rgba{col_result};
 			}
 		}
 		return col_result;
 	}
-	else return {0.f};
+	else return Rgb{0.f};
 }
 
 Rgb MonteCarloIntegrator::doLightEstimation(RandomGenerator &random_generator, ColorLayers *color_layers, bool chromatic_enabled, float wavelength, const Light *light, const SurfacePoint &sp, const Vec3 &wo, unsigned int loffs, const RayDivision &ray_division, const PixelSamplingData &pixel_sampling_data) const
@@ -413,15 +413,16 @@ Rgb MonteCarloIntegrator::causticPhotons(ColorLayers *color_layers, const Ray &r
 	if(clamp_indirect > 0.f) col.clampProportionalRgb(clamp_indirect);
 	if(color_layers && color_layers->getFlags().hasAny(LayerDef::Flags::BasicLayers))
 	{
-		if(Rgba *color_layer = color_layers->find(LayerDef::Indirect)) *color_layer += col;
+		if(Rgba *color_layer = color_layers->find(LayerDef::Indirect)) *color_layer += Rgba{col};
 	}
 	return col;
 }
 
-void MonteCarloIntegrator::causticWorker(unsigned int &total_photons_shot, int thread_id, int num_lights, const Pdf1D *light_power_d, const std::vector<const Light *> &caus_lights, int pb_step)
+void MonteCarloIntegrator::causticWorker(unsigned int &total_photons_shot, int thread_id, const Pdf1D *light_power_d_caustic, const std::vector<const Light *> &lights_caustic, int pb_step)
 {
 	bool done = false;
-	const float f_num_lights = static_cast<float>(num_lights);
+	const int num_lights_caustic = lights_caustic.size();
+	const auto f_num_lights = static_cast<float>(num_lights_caustic);
 	unsigned int curr = 0;
 	const unsigned int n_caus_photons_thread = 1 + ((n_caus_photons_ - 1) / num_threads_photons_);
 	std::vector<Photon> local_caustic_photons;
@@ -438,15 +439,15 @@ void MonteCarloIntegrator::causticWorker(unsigned int &total_photons_shot, int t
 		const float s_4 = Halton::lowDiscrepancySampling(4, haltoncurr);
 		const float s_l = static_cast<float>(haltoncurr) / static_cast<float>(n_caus_photons_);
 		float light_num_pdf;
-		const int light_num = light_power_d->dSample(s_l, light_num_pdf);
-		if(light_num >= num_lights)
+		const int light_num = light_power_d_caustic->dSample(s_l, light_num_pdf);
+		if(light_num >= num_lights_caustic)
 		{
 			logger_.logError(getName(), ": lightPDF sample error! ", s_l, "/", light_num);
 			return;
 		}
 		Ray ray;
 		float light_pdf;
-		Rgb pcol = caus_lights[light_num]->emitPhoton(s_1, s_2, s_3, s_4, ray, light_pdf);
+		Rgb pcol = lights_caustic[light_num]->emitPhoton(s_1, s_2, s_3, s_4, ray, light_pdf);
 		ray.tmin_ = ray_min_dist_;
 		ray.tmax_ = -1.f;
 		pcol *= f_num_lights * light_pdf / light_num_pdf; //remember that lightPdf is the inverse of th pdf, hence *=...
@@ -480,7 +481,7 @@ void MonteCarloIntegrator::causticWorker(unsigned int &total_photons_shot, int t
 					transm = vol->transmittance(ray);
 				}
 			}
-			const Vec3 wi = -ray.dir_;
+			const Vec3 wi{-ray.dir_};
 			const BsdfFlags &mat_bsdfs = hit_curr->mat_data_->bsdf_flags_;
 			if(mat_bsdfs.hasAny((BsdfFlags::Diffuse | BsdfFlags::Glossy)))
 			{
@@ -577,29 +578,25 @@ bool MonteCarloIntegrator::createCausticMap()
 	caustic_map_->reserveMemory(n_caus_photons_);
 	caustic_map_->setNumThreadsPkDtree(num_threads_photons_);
 
-	std::vector<const Light *> caus_lights;
-	for(const auto &light : lights_)
+	const std::vector<const Light *> lights_caustic = render_view_->getLightsEmittingCausticPhotons();
+	if(!lights_caustic.empty())
 	{
-		if(light->shootsCausticP()) caus_lights.push_back(light);
-	}
-	const int num_lights = caus_lights.size();
-	if(num_lights > 0)
-	{
-		const float f_num_lights = static_cast<float>(num_lights);
-		std::vector<float> energies(num_lights);
-		for(int i = 0; i < num_lights; ++i) energies[i] = caus_lights[i]->totalEnergy().energy();
-		auto light_power_d = std::unique_ptr<Pdf1D>(new Pdf1D(energies));
+		const int num_lights_caustic = lights_caustic.size();
+		const auto f_num_lights_caustic = static_cast<float>(num_lights_caustic);
+		std::vector<float> energies_caustic(num_lights_caustic);
+		for(int i = 0; i < num_lights_caustic; ++i) energies_caustic[i] = lights_caustic[i]->totalEnergy().energy();
+		auto light_power_d_caustic = std::unique_ptr<Pdf1D>(new Pdf1D(energies_caustic));
 
 		if(logger_.isVerbose()) logger_.logVerbose(getName(), ": Light(s) photon color testing for caustics map:");
 
-		for(int i = 0; i < num_lights; ++i)
+		for(int i = 0; i < num_lights_caustic; ++i)
 		{
 			Ray ray;
 			float light_pdf;
-			Rgb pcol = caus_lights[i]->emitPhoton(.5, .5, .5, .5, ray, light_pdf);
-			const float light_num_pdf = light_power_d->function(i) * light_power_d->invIntegral();
-			pcol *= f_num_lights * light_pdf / light_num_pdf; //remember that lightPdf is the inverse of the pdf, hence *=...
-			if(logger_.isVerbose()) logger_.logVerbose(getName(), ": Light [", i + 1, "] Photon col:", pcol, " | lnpdf: ", light_num_pdf);
+			Rgb pcol = lights_caustic[i]->emitPhoton(.5, .5, .5, .5, ray, light_pdf);
+			const float light_num_pdf = light_power_d_caustic->function(i) * light_power_d_caustic->invIntegral();
+			pcol *= f_num_lights_caustic * light_pdf / light_num_pdf; //remember that lightPdf is the inverse of the pdf, hence *=...
+			if(logger_.isVerbose()) logger_.logVerbose(getName(), ": Light [", lights_caustic[i]->getName(), "] Photon col:", pcol, " | lnpdf: ", light_num_pdf);
 		}
 
 		logger_.logInfo(getName(), ": Building caustics photon map...");
@@ -609,18 +606,18 @@ bool MonteCarloIntegrator::createCausticMap()
 
 		unsigned int curr = 0;
 
-		n_caus_photons_ = std::max((unsigned int) num_threads_photons_, (n_caus_photons_ / num_threads_photons_) * num_threads_photons_); //rounding the number of diffuse photons, so it's a number divisible by the number of threads (distribute uniformly among the threads). At least 1 photon per thread
+		n_caus_photons_ = std::max(static_cast<unsigned int>(num_threads_photons_), (n_caus_photons_ / num_threads_photons_) * num_threads_photons_); //rounding the number of diffuse photons, so it's a number divisible by the number of threads (distribute uniformly among the threads). At least 1 photon per thread
 
 		logger_.logParams(getName(), ": Shooting ", n_caus_photons_, " photons across ", num_threads_photons_, " threads (", (n_caus_photons_ / num_threads_photons_), " photons/thread)");
 
 		std::vector<std::thread> threads;
-		for(int i = 0; i < num_threads_photons_; ++i) threads.push_back(std::thread(&MonteCarloIntegrator::causticWorker, this, std::ref(curr), i, num_lights, light_power_d.get(), caus_lights, pb_step));
+		for(int i = 0; i < num_threads_photons_; ++i) threads.emplace_back(&MonteCarloIntegrator::causticWorker, this, std::ref(curr), i, light_power_d_caustic.get(), lights_caustic, pb_step);
 		for(auto &t : threads) t.join();
 
 		intpb_->done();
 		intpb_->setTag("Caustic photon map built.");
 		if(logger_.isVerbose()) logger_.logVerbose(getName(), ": Done.");
-		logger_.logInfo(getName(), ": Shot ", curr, " caustic photons from ", num_lights, " light(s).");
+		logger_.logInfo(getName(), ": Shot ", curr, " caustic photons from ", num_lights_caustic, " light(s).");
 		if(logger_.isVerbose()) logger_.logVerbose(getName(), ": Stored caustic photons: ", caustic_map_->nPhotons());
 
 		if(caustic_map_->nPhotons() > 0)
@@ -644,7 +641,7 @@ bool MonteCarloIntegrator::createCausticMap()
 
 Rgb MonteCarloIntegrator::estimateCausticPhotons(const SurfacePoint &sp, const Vec3 &wo, const PhotonMap *caustic_map, float caustic_radius, int n_caus_search)
 {
-	if(!caustic_map->ready()) return {0.f};
+	if(!caustic_map->ready()) return Rgb{0.f};
 	const auto gathered = std::unique_ptr<FoundPhoton[]>(new FoundPhoton[n_caus_search]);//(foundPhoton_t *)alloca(nCausSearch * sizeof(foundPhoton_t));
 	float g_radius_square = caustic_radius * caustic_radius;
 	const int n_gathered = caustic_map->gather(sp.p_, gathered.get(), n_caus_search, g_radius_square);
@@ -722,7 +719,7 @@ std::pair<Rgb, float> MonteCarloIntegrator::dispersive(RandomGenerator &random_g
 		if(Rgba *color_layer = color_layers->find(LayerDef::Trans))
 		{
 			dcol_trans_accum *= d_1;
-			*color_layer += dcol_trans_accum;
+			*color_layer += Rgba{dcol_trans_accum};
 		}
 	}
 	return {dcol * d_1, alpha_accum * d_1};
@@ -730,7 +727,7 @@ std::pair<Rgb, float> MonteCarloIntegrator::dispersive(RandomGenerator &random_g
 
 std::pair<Rgb, float> MonteCarloIntegrator::glossy(RandomGenerator &random_generator, ColorLayers *color_layers, int thread_id, int ray_level, bool chromatic_enabled, float wavelength, const Ray &ray, const SurfacePoint &sp, const BsdfFlags &bsdfs, const Vec3 &wo, int additional_depth, const RayDivision &ray_division, const PixelSamplingData &pixel_sampling_data) const
 {
-	if(!sp.mat_data_->bsdf_flags_.hasAny(BsdfFlags::Reflect)) return {{0.f}, -1.f}; //If alpha is -1.f we consider the result invalid and do not use it to accumulate alpha
+	if(!sp.mat_data_->bsdf_flags_.hasAny(BsdfFlags::Reflect)) return {Rgb{0.f}, -1.f}; //If alpha is -1.f we consider the result invalid and do not use it to accumulate alpha
 	const int ray_samples_glossy = ray_division.division_ > 1 ?
 								   std::max(1, initial_ray_samples_glossy_ / ray_division.division_) :
 								   initial_ray_samples_glossy_;
@@ -796,17 +793,17 @@ std::pair<Rgb, float> MonteCarloIntegrator::glossy(RandomGenerator &random_gener
 		if(Rgba *color_layer = color_layers->find(LayerDef::GlossyIndirect))
 		{
 			gcol_indirect_accum *= inverse_ray_samples_glossy;
-			*color_layer += gcol_indirect_accum;
+			*color_layer += Rgba{gcol_indirect_accum};
 		}
 		if(Rgba *color_layer = color_layers->find(LayerDef::Trans))
 		{
 			gcol_reflect_accum *= inverse_ray_samples_glossy;
-			*color_layer += gcol_reflect_accum;
+			*color_layer += Rgba{gcol_reflect_accum};
 		}
 		if(Rgba *color_layer = color_layers->find(LayerDef::GlossyIndirect))
 		{
 			gcol_transmit_accum *= inverse_ray_samples_glossy;
-			*color_layer += gcol_transmit_accum;
+			*color_layer += Rgba{gcol_transmit_accum};
 		}
 	}
 	return {gcol * inverse_ray_samples_glossy, alpha_accum * inverse_ray_samples_glossy};
@@ -883,7 +880,7 @@ std::pair<Rgb, float> MonteCarloIntegrator::specularReflect(RandomGenerator &ran
 	integ.first *= reflect_data->col_;
 	if(color_layers && color_layers->getFlags().hasAny(LayerDef::Flags::BasicLayers))
 	{
-		if(Rgba *color_layer = color_layers->find(LayerDef::ReflectPerfect)) *color_layer += integ.first;
+		if(Rgba *color_layer = color_layers->find(LayerDef::ReflectPerfect)) *color_layer += Rgba{integ.first};
 	}
 	return integ;
 }
@@ -913,7 +910,7 @@ std::pair<Rgb, float> MonteCarloIntegrator::specularRefract(RandomGenerator &ran
 	integ.first *= refract_data->col_;
 	if(color_layers && color_layers->getFlags().hasAny(LayerDef::Flags::BasicLayers))
 	{
-		if(Rgba *color_layer = color_layers->find(LayerDef::RefractPerfect)) *color_layer += integ.first;
+		if(Rgba *color_layer = color_layers->find(LayerDef::RefractPerfect)) *color_layer += Rgba{integ.first};
 	}
 	return integ;
 }

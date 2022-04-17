@@ -58,19 +58,19 @@ Vec3 inline cosHemisphere(const Vec3 &n, const Vec3 &ru, const Vec3 &rv, float s
 Vec3 inline sphere(float s_1, float s_2)
 {
 	Vec3 dir;
-	dir.z_ = 1.0f - 2.0f * s_1;
-	float r = 1.0f - dir.z_ * dir.z_;
+	dir.z() = 1.0f - 2.0f * s_1;
+	float r = 1.0f - dir.z() * dir.z();
 	if(r > 0.0f)
 	{
 		r = math::sqrt(r);
 		const float a = math::mult_pi_by_2 * s_2;
-		dir.x_ = math::cos(a) * r;
-		dir.y_ = math::sin(a) * r;
+		dir.x() = math::cos(a) * r;
+		dir.y() = math::sin(a) * r;
 	}
 	else
 	{
-		dir.x_ = 0.0f;
-		dir.y_ = 0.0f;
+		dir.x() = 0.0f;
+		dir.y() = 0.0f;
 	}
 	return dir;
 }
@@ -94,8 +94,8 @@ void inline minRot(const Vec3 &d, const Vec3 &u,
 {
 	const float cos_alpha = d * d_2;
 	const float sin_alpha = math::sqrt(1 - cos_alpha * cos_alpha);
-	const Vec3 v = d ^d_2;
-	u_2 = cos_alpha * u + (1.f - cos_alpha) * (v * u) + sin_alpha * (v ^ u);
+	const Vec3 v{d ^d_2};
+	u_2 = cos_alpha * u + Vec3{(1.f - cos_alpha) * (v * u)} + sin_alpha * (v ^ u); //FIXME DAVID: strange inconsistency detected when made Vec3 explicit, what is the middle part of the equation now surrounded by Vec3{}? Does it make sense? To be investigated... does the Vec3 portion make sense?
 	v_2 = d_2 ^ u_2;
 }
 
@@ -138,13 +138,13 @@ inline unsigned int fnv32ABuf(unsigned int value)
 	union Fnv32
 	{
 		unsigned int in_;
-		unsigned char out_[4];
+		unsigned char outs_[4];
 	} val;
 	val.in_ = value;
 
-	for(int i = 0; i < 4; i++)
+	for(unsigned char out : val.outs_)
 	{
-		hash ^= val.out_[i];
+		hash ^= out;
 		hash *= fnv_32_prime;
 	}
 	return hash;

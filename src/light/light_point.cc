@@ -40,7 +40,7 @@ bool PointLight::illuminate(const SurfacePoint &sp, Rgb &col, Ray &wi) const
 	if(photonOnly()) return false;
 
 	Vec3 ldir(position_ - sp.p_);
-	float dist_sqr = ldir.x_ * ldir.x_ + ldir.y_ * ldir.y_ + ldir.z_ * ldir.z_;
+	float dist_sqr = ldir.x() * ldir.x() + ldir.y() * ldir.y() + ldir.z() * ldir.z();
 	float dist = math::sqrt(dist_sqr);
 	float idist_sqr = 0.0;
 	if(dist == 0.0) return false;
@@ -61,7 +61,7 @@ bool PointLight::illumSample(const SurfacePoint &sp, LSample &s, Ray &wi) const
 
 	// bleh...
 	Vec3 ldir(position_ - sp.p_);
-	float dist_sqr = ldir.x_ * ldir.x_ + ldir.y_ * ldir.y_ + ldir.z_ * ldir.z_;
+	float dist_sqr = ldir.x() * ldir.x() + ldir.y() * ldir.y() + ldir.z() * ldir.z();
 	float dist = math::sqrt(dist_sqr);
 	if(dist == 0.0) return false;
 
@@ -101,9 +101,9 @@ void PointLight::emitPdf(const SurfacePoint &sp, const Vec3 &wo, float &area_pdf
 	cos_wo = 1.f;
 }
 
-std::unique_ptr<Light> PointLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * PointLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Point3 from(0.0);
+	Point3 from{0.f, 0.f, 0.f};
 	Rgb color(1.0);
 	float power = 1.0;
 	bool light_enabled = true;
@@ -122,7 +122,7 @@ std::unique_ptr<Light> PointLight::factory(Logger &logger, ParamMap &params, con
 	params.getParam("photon_only", p_only);
 
 
-	auto light = std::unique_ptr<PointLight>(new PointLight(logger, from, color, power, light_enabled, cast_shadows));
+	auto light = new PointLight(logger, from, color, power, light_enabled, cast_shadows);
 
 	light->shoot_caustic_ = shoot_c;
 	light->shoot_diffuse_ = shoot_d;

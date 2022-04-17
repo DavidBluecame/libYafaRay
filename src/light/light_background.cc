@@ -89,7 +89,7 @@ inline float BackgroundLight::calcFromSample(float s_1, float s_2, float &u, flo
 inline float BackgroundLight::calcFromDir(const Vec3 &dir, float &u, float &v, bool inv) const
 {
 	float pdf_1 = 0.f, pdf_2 = 0.f;
-	Texture::sphereMap(dir, u, v); // Returns u,v pair in [0,1] range
+	Texture::sphereMap(static_cast<Point3>(dir), u, v); // Returns u,v pair in [0,1] range
 	const int iv = clampSample(addOff(v * v_dist_->size()), v_dist_->size());
 	const int iu = clampSample(addOff(u * u_dist_[iv]->size()), u_dist_[iv]->size());
 	pdf_1 = u_dist_[iv]->function(iu) * u_dist_[iv]->invIntegral();
@@ -112,12 +112,12 @@ float BackgroundLight::dirPdf(const Vec3 &dir) const
 	return calcFromDir(dir, u, v);
 }
 
-float BackgroundLight::calcPdf(float p_0, float p_1, float s) const
+float BackgroundLight::calcPdf(float p_0, float p_1, float s)
 {
 	return std::max(sigma_, p_0 * p_1 * static_cast<float>(math::div_1_by_2pi) * clampZero(sinSample(s)));
 }
 
-float BackgroundLight::calcInvPdf(float p_0, float p_1, float s) const
+float BackgroundLight::calcInvPdf(float p_0, float p_1, float s)
 {
 	return std::max(sigma_, static_cast<float>(math::mult_pi_by_2) * sinSample(s) * clampZero(p_0 * p_1));
 }
@@ -135,8 +135,8 @@ bool BackgroundLight::illumSample(const SurfacePoint &sp, LSample &s, Ray &wi) c
 
 bool BackgroundLight::intersect(const Ray &ray, float &t, Rgb &col, float &ipdf) const
 {
-	Vec3 ray_dir = ray.dir_;
-	Vec3 abs_dir = ray.dir_;
+	Vec3 ray_dir{ray.dir_};
+	Vec3 abs_dir{ray.dir_};
 	if(abs_inter_) abs_dir = -abs_dir;
 	float u = 0.f, v = 0.f;
 	ipdf = calcFromDir(abs_dir, u, v, true);
@@ -156,11 +156,10 @@ Rgb BackgroundLight::emitPhoton(float s_1, float s_2, float s_3, float s_4, Ray 
 	sampleDir(s_3, s_4, ray.dir_, ipdf, true);
 	const Rgb pcol = background_->eval(ray.dir_, true);
 	ray.dir_ = -ray.dir_;
-	Vec3 u_vec, v_vec;
-	Vec3::createCs(ray.dir_, u_vec, v_vec);
+	const auto coords{Vec3::createCoordsSystem(ray.dir_)};
 	float u, v;
 	Vec3::shirleyDisk(s_1, s_2, u, v);
-	const Vec3 offs = u * u_vec + v * v_vec;
+	const Vec3 offs{u * coords.first + v * coords.second};
 	ray.from_ = world_center_ + world_radius_ * (offs - ray.dir_);
 	return pcol * a_pdf_;
 }
@@ -170,11 +169,10 @@ Rgb BackgroundLight::emitSample(Vec3 &wo, LSample &s) const
 	sampleDir(s.s_1_, s.s_2_, wo, s.dir_pdf_, true);
 	const Rgb pcol = background_->eval(wo, true);
 	wo = -wo;
-	Vec3 u_vec, v_vec;
-	Vec3::createCs(wo, u_vec, v_vec);
+	const auto coords{Vec3::createCoordsSystem(wo)};
 	float u, v;
 	Vec3::shirleyDisk(s.s_1_, s.s_2_, u, v);
-	const Vec3 offs = u * u_vec + v * v_vec;
+	const Vec3 offs{u * coords.first + v * coords.second};
 	s.sp_->p_ = world_center_ + world_radius_ * offs - world_radius_ * wo;
 	s.sp_->n_ = s.sp_->ng_ = wo;
 	s.area_pdf_ = 1.f;
@@ -184,21 +182,21 @@ Rgb BackgroundLight::emitSample(Vec3 &wo, LSample &s) const
 
 float BackgroundLight::illumPdf(const SurfacePoint &sp, const SurfacePoint &sp_light) const
 {
-	const Vec3 dir = (sp_light.p_ - sp.p_).normalize();
+	const Vec3 dir{(sp_light.p_ - sp.p_).normalize()};
 	return dirPdf(dir);
 }
 
 void BackgroundLight::emitPdf(const SurfacePoint &sp, const Vec3 &wo, float &area_pdf, float &dir_pdf, float &cos_wo) const
 {
-	Vec3 wi = wo;
+	Vec3 wi{wo};
 	wi.normalize();
-	cos_wo = wi.z_;
+	cos_wo = wi.z();
 	wi = -wi;
 	dir_pdf = dirPdf(wi);
 	area_pdf = 1.f;
 }
 
-std::unique_ptr<Light> BackgroundLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * BackgroundLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	int samples = 16;
 	bool shoot_d = true;
@@ -216,7 +214,7 @@ std::unique_ptr<Light> BackgroundLight::factory(Logger &logger, ParamMap &params
 	params.getParam("cast_shadows", cast_shadows);
 	params.getParam("photon_only", p_only);
 
-	auto light = std::unique_ptr<BackgroundLight>(new BackgroundLight(logger, samples, abs_int, light_enabled, cast_shadows));
+	auto light = new BackgroundLight(logger, samples, abs_int, light_enabled, cast_shadows);
 
 	light->shoot_caustic_ = shoot_c;
 	light->shoot_diffuse_ = shoot_d;

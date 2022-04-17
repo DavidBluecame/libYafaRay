@@ -182,9 +182,9 @@ void ExportPython::writeParam(const std::string &name, const Parameter &param, s
 	}
 	else if(type == Parameter::Vector)
 	{
-		Point3 p(0.f);
+		Point3 p{0.f, 0.f, 0.f};
 		param.getVal(p);
-		file << "yi.paramsSetVector(\"" << name << "\", " << p.x_ << ", " << p.y_ << ", " << p.z_ << ")\n";
+		file << "yi.paramsSetVector(\"" << name << "\", " << p.x() << ", " << p.y() << ", " << p.z() << ")\n";
 	}
 	else if(type == Parameter::Color)
 	{
@@ -254,7 +254,7 @@ Texture *ExportPython::createTexture(const char *name) noexcept
 	return nullptr;
 }
 
-Material *ExportPython::createMaterial(const char *name) noexcept
+const Material *ExportPython::createMaterial(const char *name) noexcept
 {
 	writeParamMap(*params_);
 	writeParamList(1);
@@ -264,7 +264,7 @@ Material *ExportPython::createMaterial(const char *name) noexcept
 	file_ << "yi.paramsClearAll()\n\n";
 	return nullptr;
 }
-Camera *ExportPython::createCamera(const char *name) noexcept
+const Camera * ExportPython::createCamera(const char *name) noexcept
 {
 	writeParamMap(*params_);
 	params_->clear();
@@ -272,7 +272,7 @@ Camera *ExportPython::createCamera(const char *name) noexcept
 	file_ << "yi.paramsClearAll()\n\n";
 	return nullptr;
 }
-Background *ExportPython::createBackground(const char *name) noexcept
+const Background * ExportPython::createBackground(const char *name) noexcept
 {
 	writeParamMap(*params_);
 	params_->clear();

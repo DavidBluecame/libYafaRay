@@ -27,7 +27,7 @@
 
 BEGIN_YAFARAY
 
-IesLight::IesLight(Logger &logger, const Point3 &from, const Point3 &to, const Rgb &col, float power, const std::string ies_file, int smpls, bool s_sha, float ang, bool b_light_enabled, bool b_cast_shadows):
+IesLight::IesLight(Logger &logger, const Point3 &from, const Point3 &to, const Rgb &col, float power, const std::string &ies_file, int smpls, bool s_sha, float ang, bool b_light_enabled, bool b_cast_shadows):
 		Light(logger, Light::Flags::Singular), position_(from), samples_(smpls), soft_shadow_(s_sha)
 {
 	light_enabled_ = b_light_enabled;
@@ -40,7 +40,7 @@ IesLight::IesLight(Logger &logger, const Point3 &from, const Point3 &to, const R
 		ndir_.normalize();
 		dir_ = -ndir_;
 
-		Vec3::createCs(dir_, du_, dv_);
+		std::tie(du_, dv_) = Vec3::createCoordsSystem(dir_);
 		cos_end_ = math::cos(ies_data_->getMaxVAngle());
 
 		color_ = col * power;
@@ -48,11 +48,11 @@ IesLight::IesLight(Logger &logger, const Point3 &from, const Point3 &to, const R
 	}
 }
 
-void IesLight::getAngles(float &u, float &v, const Vec3 &dir, const float &costheta) const
+void IesLight::getAngles(float &u, float &v, const Vec3 &dir, const float &costheta)
 {
-	u = (dir.z_ >= 1.f) ? 0.f : math::radToDeg(math::acos(dir.z_));
+	u = (dir.z() >= 1.f) ? 0.f : math::radToDeg(math::acos(dir.z()));
 
-	if(dir.y_ < 0)
+	if(dir.y() < 0)
 	{
 		u = 360.f - u;
 	}
@@ -139,7 +139,7 @@ Rgb IesLight::emitPhoton(float s_1, float s_2, float s_3, float s_4, Ray &ray, f
 
 	float cosa = ray.dir_ * dir_;
 
-	if(cosa < cos_end_) return Rgb(0.f);
+	if(cosa < cos_end_) return Rgb{0.f};
 
 	float u, v;
 	getAngles(u, v, ray.dir_, cosa);
@@ -187,9 +187,9 @@ void IesLight::emitPdf(const SurfacePoint &sp, const Vec3 &wo, float &area_pdf, 
 	dir_pdf = (rad > 0.f) ? (tot_energy_ / rad) : 0.f;
 }
 
-std::unique_ptr<Light> IesLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * IesLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Point3 from(0.0);
+	Point3 from{0.f, 0.f, 0.f};
 	Point3 to(0.f, 0.f, -1.f);
 	Rgb color(1.0);
 	float power = 1.0;
@@ -217,7 +217,7 @@ std::unique_ptr<Light> IesLight::factory(Logger &logger, ParamMap &params, const
 	params.getParam("with_diffuse", shoot_d);
 	params.getParam("photon_only", p_only);
 
-	auto light = std::unique_ptr<IesLight>(new IesLight(logger, from, to, color, power, file, sam, s_sha, ang, light_enabled, cast_shadows));
+	auto light = new IesLight(logger, from, to, color, power, file, sam, s_sha, ang, light_enabled, cast_shadows);
 
 	if(!light->isIesOk()) return nullptr;
 

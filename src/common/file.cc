@@ -55,7 +55,7 @@ Path::Path(const std::string &full_path)
 
 	if(directory_.empty()) full_name = full_path;
 
-	const size_t dot = full_name.find_last_of(".");
+	const size_t dot = full_name.find_last_of('.');
 
 	if(dot != std::string::npos)
 	{
@@ -293,7 +293,7 @@ std::vector<std::string> File::listFiles(const std::string &directory)
 	{
 		while((dir = readdir(dirp)))
 		{
-			if(dir->d_type == DT_REG) files.push_back(std::string(dir->d_name));
+			if(dir->d_type == DT_REG) files.emplace_back(dir->d_name);
 		}
 		closedir(dirp);
 	}

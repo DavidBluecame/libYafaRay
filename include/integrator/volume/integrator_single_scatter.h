@@ -35,17 +35,17 @@ class RandomGenerator;
 class SingleScatterIntegrator final : public VolumeIntegrator
 {
 	public:
-		static std::unique_ptr<Integrator> factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control);
+		static Integrator *factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control);
 
 	private:
 		SingleScatterIntegrator(Logger &logger, float s_size, bool adapt, bool opt);
-		virtual std::string getShortName() const override { return "SSc"; }
-		virtual std::string getName() const override { return "SingleScatter"; }
-		virtual bool preprocess(ImageFilm *image_film, const RenderView *render_view, const Scene &scene) override;
+		std::string getShortName() const override { return "SSc"; }
+		std::string getName() const override { return "SingleScatter"; }
+		bool preprocess(ImageFilm *image_film, const RenderView *render_view, const Scene &scene) override;
 		// optical thickness, absorption, attenuation, extinction
-		virtual Rgb transmittance(RandomGenerator &random_generator, const Ray &ray) const override;
+		Rgb transmittance(RandomGenerator &random_generator, const Ray &ray) const override;
 		// emission and in-scattering
-		virtual Rgb integrate(RandomGenerator &random_generator, const Ray &ray, int additional_depth = 0) const override;
+		Rgb integrate(RandomGenerator &random_generator, const Ray &ray, int additional_depth) const override;
 		Rgb getInScatter(RandomGenerator &random_generator, const Ray &step_ray, float current_step) const;
 
 		bool adaptive_;

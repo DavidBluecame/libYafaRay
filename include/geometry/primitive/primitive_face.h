@@ -34,9 +34,9 @@ class FacePrimitive: public Primitive
 	public:
 		FacePrimitive(const std::vector<int> &vertices_indices, const std::vector<int> &vertices_uv_indices, const MeshObject &mesh_object);
 		//In the following functions "vertex_number" is the vertex number in the face: 0, 1, 2 in triangles, 0, 1, 2, 3 in quads, etc
-		virtual Vec3 getGeometricNormal(const Matrix4 *obj_to_world = nullptr, float u = 0.f, float v = 0.f) const override;
-		virtual const Material *getMaterial() const override { return material_; }
-		virtual Bound getBound(const Matrix4 *obj_to_world) const override;
+		Vec3 getGeometricNormal(const Matrix4 *obj_to_world, float u, float v) const override;
+		const Material *getMaterial() const override { return material_->get(); }
+		Bound getBound(const Matrix4 *obj_to_world) const override;
 		virtual void calculateGeometricNormal() = 0;
 		Point3 getVertex(size_t vertex_number, const Matrix4 *obj_to_world = nullptr) const; //!< Get face vertex
 		Point3 getOrcoVertex(size_t vertex_number) const; //!< Get face original coordinates (orco) vertex in instance objects
@@ -51,18 +51,18 @@ class FacePrimitive: public Primitive
 		std::vector<Point3> getOrcoVertices() const;
 		std::vector<Vec3> getVerticesNormals(const Vec3 &surface_normal, const Matrix4 *obj_to_world = nullptr) const;
 		std::vector<Uv> getVerticesUvs() const;
-		void setMaterial(const Material *material) { material_ = material; }
+		void setMaterial(const std::unique_ptr<const Material> *material) { material_ = material; }
 		size_t getSelfIndex() const { return self_index_; }
 		void setSelfIndex(size_t index) { self_index_ = index; }
 		static Bound getBound(const std::vector<Point3> &vertices);
-		virtual const Object *getObject() const override { return &base_mesh_object_; }
-		virtual Visibility getVisibility() const override { return base_mesh_object_.getVisibility(); }
+		const Object *getObject() const override { return &base_mesh_object_; }
+		Visibility getVisibility() const override { return base_mesh_object_.getVisibility(); }
 
 	protected:
 		size_t self_index_ = 0;
 		Vec3 normal_geometric_;
 		const MeshObject &base_mesh_object_;
-		const Material *material_ = nullptr;
+		const std::unique_ptr<const Material> *material_ = nullptr;
 		std::vector<int> vertices_; //!< indices in point array, referenced in mesh.
 		std::vector<int> vertex_normals_; //!< indices in normal array, if mesh is smoothed.
 		std::vector<int> vertex_uvs_; //!< indices in uv array, if mesh has explicit uv.

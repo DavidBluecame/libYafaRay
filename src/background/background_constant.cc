@@ -26,15 +26,8 @@
 
 BEGIN_YAFARAY
 
-ConstantBackground::ConstantBackground(Logger &logger, Rgb col, bool ibl, bool with_caustic) : Background(logger), color_(col)
+ConstantBackground::ConstantBackground(Logger &logger, Rgb col) : Background(logger), color_(col)
 {
-	with_ibl_ = ibl;
-	shoot_caustic_ = with_caustic;
-}
-
-Rgb ConstantBackground::operator()(const Vec3 &dir, bool use_ibl_blur) const
-{
-	return color_;
 }
 
 Rgb ConstantBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
@@ -42,7 +35,7 @@ Rgb ConstantBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
 	return color_;
 }
 
-std::unique_ptr<Background> ConstantBackground::factory(Logger &logger, ParamMap &params, Scene &scene)
+const Background * ConstantBackground::factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Rgb col(0.f);
 	float power = 1.0;
@@ -60,7 +53,7 @@ std::unique_ptr<Background> ConstantBackground::factory(Logger &logger, ParamMap
 	params.getParam("with_caustic", caus);
 	params.getParam("with_diffuse", diff);
 
-	auto const_bg = std::unique_ptr<ConstantBackground>(new ConstantBackground(logger, col * power, ibl, true));
+	auto const_bg = new ConstantBackground(logger, col * power);
 
 	if(ibl)
 	{
@@ -72,7 +65,7 @@ std::unique_ptr<Background> ConstantBackground::factory(Logger &logger, ParamMap
 		bgp["cast_shadows"] = cast_shadows;
 
 		Light *bglight = scene.createLight("constantBackground_bgLight", bgp);
-		bglight->setBackground(const_bg.get());
+		bglight->setBackground(const_bg);
 	}
 
 	return const_bg;

@@ -31,12 +31,13 @@ BEGIN_YAFARAY
 class ProgressBar
 {
 	public:
-		ProgressBar(yafaray_ProgressBarCallback_t monitor_callback = nullptr, void *callback_data = nullptr) : progress_bar_callback_(monitor_callback), callback_data_(callback_data) { }
+		explicit ProgressBar(yafaray_ProgressBarCallback_t monitor_callback = nullptr, void *callback_data = nullptr) : progress_bar_callback_(monitor_callback), callback_data_(callback_data) { }
 		virtual ~ProgressBar() = default;
 		//! initialize (or reset) the monitor, give the total number of steps that can occur
 		virtual void init(int steps_total, bool colors_enabled) { std::lock_guard<std::mutex> lock_guard(mutx_); steps_total_ = steps_total; steps_done_ = 0; colors_enabled_ = colors_enabled; }
 		//! update the montior, increment by given number of steps_increment; init has to be called before the first update.
-		virtual void update(int steps_increment = 1);
+		virtual void update(int steps_increment);
+		void update() { update(1); }
 		//! finish progress bar. It could output some summary, simply disappear from GUI or whatever...
 		virtual void done();
 		//! method to pass some informative text to the progress bar in case needed
@@ -44,7 +45,7 @@ class ProgressBar
 		virtual std::string getTag() const { return tag_; }
 		virtual float getPercent() const;
 		virtual float getTotalSteps() const { return steps_total_; }
-		std::string getName() const { return "ProgressBar"; }
+		static std::string getName() { return "ProgressBar"; }
 
 	protected:
 		bool colors_enabled_ = true;
@@ -64,10 +65,10 @@ class ProgressBar
 class ConsoleProgressBar : public ProgressBar
 {
 	public:
-		ConsoleProgressBar(int cwidth = 80, yafaray_ProgressBarCallback_t monitor_callback = nullptr, void *callback_data = nullptr);
-		virtual void init(int total_steps, bool colors_enabled) override;
-		virtual void update(int steps_increment = 1) override;
-		virtual void done() override;
+		explicit ConsoleProgressBar(int cwidth = 80, yafaray_ProgressBarCallback_t monitor_callback = nullptr, void *callback_data = nullptr);
+		void init(int total_steps, bool colors_enabled) override;
+		void update(int steps_increment) override;
+		void done() override;
 
 	private:
 		static void printBar(bool colors_enabled, int progress_empty, int progress_full, int percent);

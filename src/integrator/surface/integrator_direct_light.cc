@@ -103,7 +103,7 @@ std::pair<Rgb, float> DirectLightIntegrator::integrate(Ray &ray, RandomGenerator
 	if(sp)
 	{
 		const BsdfFlags &mat_bsdfs = sp->mat_data_->bsdf_flags_;
-		const Vec3 wo = -ray.dir_;
+		const Vec3 wo{-ray.dir_};
 		additional_depth = std::max(additional_depth, sp->material_->getAdditionalDepth());
 		if(mat_bsdfs.hasAny(BsdfFlags::Emit))
 		{
@@ -111,7 +111,7 @@ std::pair<Rgb, float> DirectLightIntegrator::integrate(Ray &ray, RandomGenerator
 			col += col_emit;
 			if(color_layers && color_layers->getFlags().hasAny(LayerDef::Flags::BasicLayers))
 			{
-				if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer = col_emit;
+				if(Rgba *color_layer = color_layers->find(LayerDef::Emit)) *color_layer = Rgba{col_emit};
 			}
 		}
 		if(mat_bsdfs.hasAny(BsdfFlags::Diffuse))
@@ -143,7 +143,7 @@ std::pair<Rgb, float> DirectLightIntegrator::integrate(Ray &ray, RandomGenerator
 	return {col, alpha};
 }
 
-std::unique_ptr<Integrator> DirectLightIntegrator::factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control)
+Integrator * DirectLightIntegrator::factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control)
 {
 	bool transp_shad = false;
 	bool caustics = false;
@@ -175,7 +175,7 @@ std::unique_ptr<Integrator> DirectLightIntegrator::factory(Logger &logger, Param
 	params.getParam("bg_transp_refract", bg_transp_refract);
 	params.getParam("photon_maps_processing", photon_maps_processing_str);
 
-	auto inte = std::unique_ptr<DirectLightIntegrator>(new DirectLightIntegrator(render_control, logger, transp_shad, shadow_depth, raydepth));
+	auto inte = new DirectLightIntegrator(render_control, logger, transp_shad, shadow_depth, raydepth);
 	// caustic settings
 	inte->use_photon_caustics_ = caustics;
 	inte->n_caus_photons_ = photons;

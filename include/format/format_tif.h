@@ -30,13 +30,12 @@ BEGIN_YAFARAY
 class TifFormat final : public Format
 {
 	public:
-		static std::unique_ptr<Format> factory(Logger &logger, ParamMap &params);
+		explicit TifFormat(Logger &logger) : Format(logger) { }
 
 	private:
-		TifFormat(Logger &logger) : Format(logger) { }
-		virtual std::string getFormatName() const override { return "TifFormat"; }
-		virtual std::unique_ptr<Image> loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma) override;
-		virtual bool saveToFile(const std::string &name, const ImageLayer &image_layer, ColorSpace color_space, float gamma, bool alpha_premultiply) override;
+		std::string getFormatName() const override { return "TifFormat"; }
+		Image * loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma) override;
+		bool saveToFile(const std::string &name, const ImageLayer &image_layer, ColorSpace color_space, float gamma, bool alpha_premultiply) override;
 };
 
 END_YAFARAY

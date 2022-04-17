@@ -28,7 +28,7 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Accelerator> AcceleratorKdTreeMultiThread::factory(Logger &logger, const std::vector<const Primitive *> &primitives, ParamMap &params)
+const Accelerator * AcceleratorKdTreeMultiThread::factory(Logger &logger, const std::vector<const Primitive *> &primitives, const ParamMap &params)
 {
 	AcceleratorKdTreeMultiThread::Parameters parameters;
 
@@ -39,15 +39,14 @@ std::unique_ptr<Accelerator> AcceleratorKdTreeMultiThread::factory(Logger &logge
 	params.getParam("accelerator_threads", parameters.num_threads_);
 	params.getParam("accelerator_min_indices_threads", parameters.min_indices_to_spawn_threads_);
 
-	auto accelerator = std::unique_ptr<Accelerator>(new AcceleratorKdTreeMultiThread(logger, primitives, parameters));
-	return accelerator;
+	return new AcceleratorKdTreeMultiThread(logger, primitives, parameters);
 }
 
 AcceleratorKdTreeMultiThread::AcceleratorKdTreeMultiThread(Logger &logger, const std::vector<const Primitive *> &primitives, const Parameters &parameters) : Accelerator(logger)
 {
 	Parameters tree_build_parameters = parameters;
 
-	const uint32_t num_primitives = static_cast<uint32_t>(primitives.size());
+	const auto num_primitives = static_cast<uint32_t>(primitives.size());
 	logger_.logInfo("Kd-Tree MultiThread: Starting build (", num_primitives, " prims, cost_ratio:", parameters.cost_ratio_, " empty_bonus:", parameters.empty_bonus_, ") [using ", tree_build_parameters.num_threads_, " threads, min indices to spawn threads: ", tree_build_parameters.min_indices_to_spawn_threads_, "]");
 	clock_t clock_start = clock();
 	if(tree_build_parameters.max_depth_ <= 0) tree_build_parameters.max_depth_ = static_cast<int>(7.0f + 1.66f * log(static_cast<float>(num_primitives)));
@@ -83,7 +82,7 @@ AcceleratorKdTreeMultiThread::AcceleratorKdTreeMultiThread(Logger &logger, const
 	std::vector<uint32_t> prim_indices(num_primitives);
 	for(uint32_t prim_num = 0; prim_num < num_primitives; prim_num++) prim_indices[prim_num] = prim_num;
 	if(logger_.isVerbose()) logger_.logVerbose("Kd-Tree MultiThread: Starting recursive build...");
-	const Result kd_tree_result = buildTree(primitives, tree_bound_, prim_indices, 0, 0, 0, bounds, tree_build_parameters, ClipPlane::Pos::None, {}, {}, num_current_threads_);
+	const Result kd_tree_result = buildTree(primitives, tree_bound_, prim_indices, 0, 0, 0, bounds, tree_build_parameters, ClipPlane(ClipPlane::Pos::None), {}, {}, num_current_threads_);
 	nodes_ = std::move(kd_tree_result.nodes_);
 	//print some stats:
 	const clock_t clock_elapsed = clock() - clock_start;
@@ -138,7 +137,7 @@ AcceleratorKdTreeMultiThread::~AcceleratorKdTreeMultiThread()
 
 AcceleratorKdTreeMultiThread::SplitCost AcceleratorKdTreeMultiThread::pigeonMinCost(Logger &logger, float e_bonus, float cost_ratio, const std::vector<Bound> &bounds, const Bound &node_bound, const std::vector<uint32_t> &prim_indices)
 {
-	const uint32_t num_prim_indices = static_cast<uint32_t>(prim_indices.size());
+	const auto num_prim_indices = static_cast<uint32_t>(prim_indices.size());
 	static constexpr int max_bin = 1024;
 	static constexpr int num_bins = max_bin + 1;
 	std::array<TreeBin, num_bins> bins;
@@ -284,7 +283,7 @@ AcceleratorKdTreeMultiThread::SplitCost AcceleratorKdTreeMultiThread::pigeonMinC
 
 AcceleratorKdTreeMultiThread::SplitCost AcceleratorKdTreeMultiThread::minimalCost(Logger &logger, float e_bonus, float cost_ratio, const Bound &node_bound, const std::vector<uint32_t> &indices, const std::vector<Bound> &bounds)
 {
-	const uint32_t num_indices = static_cast<uint32_t>(indices.size());
+	const auto num_indices = static_cast<uint32_t>(indices.size());
 	const Vec3 node_bound_axes {node_bound.longX(), node_bound.longY(), node_bound.longZ() };
 	const Vec3 inv_node_bound_axes { 1.f / node_bound_axes[0], 1.f / node_bound_axes[1], 1.f / node_bound_axes[2] };
 	SplitCost split;
@@ -422,7 +421,7 @@ void AcceleratorKdTreeMultiThread::buildTreeWorker(const std::vector<const Primi
 	std::vector<uint32_t> poly_indices;
 	std::vector<uint32_t> prim_indices;
 	std::vector<Bound> poly_bounds;
-	const uint32_t num_indices = static_cast<uint32_t>(indices.size());
+	const auto num_indices = static_cast<uint32_t>(indices.size());
 	const bool do_poly_clipping = (num_indices <= poly_clipping_threshold && num_indices <= primitive_indices.size());
 	if(do_poly_clipping)
 	{
@@ -474,7 +473,7 @@ void AcceleratorKdTreeMultiThread::buildTreeWorker(const std::vector<const Primi
 	}
 #endif
 
-	const uint32_t num_new_indices = static_cast<uint32_t>(new_indices.get().size());
+	const auto num_new_indices = static_cast<uint32_t>(new_indices.get().size());
 	//	<< check if leaf criteria met >>
 	if(num_new_indices <= static_cast<uint32_t>(parameters.max_leaf_size_) || depth >= parameters.max_depth_)
 	{
@@ -588,7 +587,7 @@ void AcceleratorKdTreeMultiThread::buildTreeWorker(const std::vector<const Primi
 	}
 
 	Node node;
-	const Stats interior_stats = node.createInterior(split.axis_, split_pos);
+	const Stats interior_stats = node.createInterior(Axis(split.axis_), split_pos);
 	result.stats_ += interior_stats;
 	result.nodes_.emplace_back(node);
 	Bound bound_left = node_bound;
@@ -612,7 +611,7 @@ void AcceleratorKdTreeMultiThread::buildTreeWorker(const std::vector<const Primi
 
 	if(num_current_threads_ < parameters.num_threads_ && (left_primitive_indices.size() >= (right_primitive_indices.size() / 10)) && (right_primitive_indices.size() >= (left_primitive_indices.size() / 10)) && (left_primitive_indices.size() >= static_cast<size_t>(parameters.min_indices_to_spawn_threads_)))
 	{
-		const uint32_t next_free_node_original = static_cast<uint32_t>(next_node_id + result.nodes_.size());
+		const auto next_free_node_original = static_cast<uint32_t>(next_node_id + result.nodes_.size());
 		Result result_left;
 		auto left_worker = std::thread(&AcceleratorKdTreeMultiThread::buildTreeWorker, this, primitives, bound_left, left_indices, depth + 1, next_free_node_original, bad_refines, new_bounds, parameters, left_clip_plane, new_polygons, left_primitive_indices, std::ref(result_left), std::ref(num_current_threads));
 		num_current_threads++;
@@ -627,7 +626,7 @@ void AcceleratorKdTreeMultiThread::buildTreeWorker(const std::vector<const Primi
 		result.stats_ += result_left.stats_;
 		result.stats_ += result_right.stats_;
 
-		const uint32_t num_nodes_left = static_cast<uint32_t>(result_left.nodes_.size());
+		const auto num_nodes_left = static_cast<uint32_t>(result_left.nodes_.size());
 		const uint32_t next_free_node_left = next_free_node_original + num_nodes_left;
 		result.nodes_.back().setRightChild(next_free_node_left);
 		//Correct the "right child" in the right nodes adding the original nodes + left nodes list sizes as offset to each
@@ -670,7 +669,7 @@ AcceleratorIntersectData AcceleratorKdTreeMultiThread::intersect(const Ray &ray,
 	const Bound::Cross cross = tree_bound.cross(ray, t_max);
 	if(!cross.crossed_) { return {}; }
 
-	const Vec3 inv_dir(1.f / ray.dir_.x_, 1.f / ray.dir_.y_, 1.f / ray.dir_.z_);
+	const Vec3 inv_dir(1.f / ray.dir_.x(), 1.f / ray.dir_.y(), 1.f / ray.dir_.z());
 
 	std::array<Stack, kd_max_stack_> stack;
 	const Node *far_child;
@@ -798,7 +797,7 @@ AcceleratorIntersectData AcceleratorKdTreeMultiThread::intersectS(const Ray &ray
 	AcceleratorIntersectData accelerator_intersect_data;
 	const Bound::Cross cross = tree_bound.cross(ray, t_max);
 	if(!cross.crossed_) { return {}; }
-	const Vec3 inv_dir(1.f / ray.dir_.x_, 1.f / ray.dir_.y_, 1.f / ray.dir_.z_);
+	const Vec3 inv_dir(1.f / ray.dir_.x(), 1.f / ray.dir_.y(), 1.f / ray.dir_.z());
 	std::array<Stack, kd_max_stack_> stack;
 	const Node *far_child, *curr_node;
 	curr_node = nodes.data();
@@ -927,14 +926,14 @@ AcceleratorTsIntersectData AcceleratorKdTreeMultiThread::intersectTs(const Ray &
 	//To avoid division by zero
 	float inv_dir_x, inv_dir_y, inv_dir_z;
 
-	if(ray.dir_.x_ == 0.f) inv_dir_x = std::numeric_limits<float>::max();
-	else inv_dir_x = 1.f / ray.dir_.x_;
+	if(ray.dir_.x() == 0.f) inv_dir_x = std::numeric_limits<float>::max();
+	else inv_dir_x = 1.f / ray.dir_.x();
 
-	if(ray.dir_.y_ == 0.f) inv_dir_y = std::numeric_limits<float>::max();
-	else inv_dir_y = 1.f / ray.dir_.y_;
+	if(ray.dir_.y() == 0.f) inv_dir_y = std::numeric_limits<float>::max();
+	else inv_dir_y = 1.f / ray.dir_.y();
 
-	if(ray.dir_.z_ == 0.f) inv_dir_z = std::numeric_limits<float>::max();
-	else inv_dir_z = 1.f / ray.dir_.z_;
+	if(ray.dir_.z() == 0.f) inv_dir_z = std::numeric_limits<float>::max();
+	else inv_dir_z = 1.f / ray.dir_.z();
 
 	Vec3 inv_dir(inv_dir_x, inv_dir_y, inv_dir_z);
 	int depth = 0;
@@ -1032,7 +1031,7 @@ AcceleratorTsIntersectData AcceleratorKdTreeMultiThread::intersectTs(const Ray &
 						if(filtered.insert(primitive).second)
 						{
 							if(depth >= max_depth) return true;
-							const Point3 hit_point = ray.from_ + accelerator_intersect_data.t_hit_ * ray.dir_;
+							const Point3 hit_point{ray.from_ + accelerator_intersect_data.t_hit_ * ray.dir_};
 							const auto sp = primitive->getSurface(ray.differentials_.get(), hit_point, accelerator_intersect_data, nullptr, camera);
 							if(sp) accelerator_intersect_data.transparent_color_ *= sp->getTransparency(ray.dir_, camera);
 							++depth;

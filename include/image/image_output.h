@@ -37,7 +37,7 @@ class Format;
 class ImageOutput final
 {
 	public:
-		static std::unique_ptr<ImageOutput> factory(Logger &logger, const ParamMap &params, const Scene &scene);
+		static ImageOutput *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 		void setLoggingParams(const ParamMap &params);
 		void setBadgeParams(const ParamMap &params);
 		void flush(const RenderControl &render_control, const Timer &timer);
@@ -45,11 +45,10 @@ class ImageOutput final
 		void setRenderView(const RenderView *render_view) { current_render_view_ = render_view; }
 		std::string getName() const { return name_; }
 		std::string printBadge(const RenderControl &render_control, const Timer &timer) const;
-		std::unique_ptr<Image> generateBadgeImage(const RenderControl &render_control, const Timer &timer) const;
+		Image * generateBadgeImage(const RenderControl &render_control, const Timer &timer) const;
 
 	private:
-		ImageOutput(Logger &logger, const std::string &image_path, const DenoiseParams denoise_params, const std::string &name = "out", const ColorSpace color_space = ColorSpace::RawManualGamma, float gamma = 1.f, bool with_alpha = true, bool alpha_premultiply = false, bool multi_layer = false);
-		std::string printDenoiseParams() const;
+		ImageOutput(Logger &logger, const std::string &image_path, const DenoiseParams &denoise_params, const std::string &name = "out", ColorSpace color_space = ColorSpace::RawManualGamma, float gamma = 1.f, bool with_alpha = true, bool alpha_premultiply = false, bool multi_layer = false);
 		bool denoiseEnabled() const { return denoise_params_.enabled_; }
 		void saveImageFile(const std::string &filename, LayerDef::Type layer_type, Format *format, const RenderControl &render_control, const Timer &timer);
 		void saveImageFileMultiChannel(const std::string &filename, Format *format, const RenderControl &render_control, const Timer &timer);

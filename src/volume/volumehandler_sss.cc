@@ -17,6 +17,8 @@
  */
 
 #include "volume/volumehandler_sss.h"
+
+#include <cmath>
 #include "scene/scene.h"
 #include "material/material.h"
 #include "common/param.h"
@@ -30,7 +32,7 @@ SssVolumeHandler::SssVolumeHandler(Logger &logger, const Rgb &a_col, const Rgb &
 
 bool SssVolumeHandler::scatter(const Ray &ray, Ray &s_ray, PSample &s) const
 {
-	float dist = -dist_s_ * log(s.s_1_);
+	float dist = -dist_s_ * std::log(s.s_1_);
 	if(dist >= ray.tmax_) return false;
 	s_ray.from_ = ray.from_ + dist * ray.dir_;
 	s_ray.dir_ = sample::sphere(s.s_2_, s.s_3_);
@@ -38,14 +40,14 @@ bool SssVolumeHandler::scatter(const Ray &ray, Ray &s_ray, PSample &s) const
 	return true;
 }
 
-std::unique_ptr<VolumeHandler> SssVolumeHandler::factory(Logger &logger, const ParamMap &params, const Scene &scene)
+VolumeHandler * SssVolumeHandler::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Rgb a_col(0.5f), s_col(0.8f);
 	double dist = 1.f;
 	params.getParam("absorption_col", a_col);
 	params.getParam("absorption_dist", dist);
 	params.getParam("scatter_col", s_col);
-	return std::unique_ptr<VolumeHandler>(new SssVolumeHandler(logger, a_col, s_col, dist));
+	return new SssVolumeHandler(logger, a_col, s_col, dist);
 }
 
 END_YAFARAY

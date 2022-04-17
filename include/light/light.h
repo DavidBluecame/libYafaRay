@@ -42,14 +42,14 @@ struct LSample;
 class Light
 {
 	public:
-		static std::unique_ptr<Light> factory(Logger &logger, ParamMap &params, const Scene &scene);
+		static Light *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 		struct Flags : public yafaray::Flags
 		{
 			Flags() = default;
-			Flags(unsigned int flags) : yafaray::Flags(flags) { }
+			Flags(unsigned int flags) : yafaray::Flags(flags) { } // NOLINT(google-explicit-constructor)
 			enum Enum : unsigned int { None = 0, DiracDir = 1, Singular = 1 << 1 };
 		};
-		Light(Logger &logger) : logger_(logger) { }
+		explicit Light(Logger &logger) : logger_(logger) { }
 		Light(Logger &logger, const Flags &flags): flags_(flags), logger_(logger) { }
 		virtual ~Light() = default;
 		//! allow for preprocessing when scene loading has finished
@@ -60,7 +60,7 @@ class Light
 		virtual Rgb emitPhoton(float s_1, float s_2, float s_3, float s_4, Ray &ray, float &ipdf) const = 0;
 		//! create a sample of light emission, similar to emitPhoton, just more suited for bidirectional methods
 		/*! fill in s.dirPdf, s.areaPdf, s.col and s.flags, and s.sp if not nullptr */
-		virtual Rgb emitSample(Vec3 &wo, LSample &s) const {return Rgb(0.f);};
+		virtual Rgb emitSample(Vec3 &wo, LSample &s) const {return Rgb{0.f};};
 		//! indicate whether the light has a dirac delta distribution or not
 		virtual bool diracLight() const = 0;
 		//! illuminate a given surface point, generating sample s, fill in s.sp if not nullptr; Set ray to test visibility by integrator
@@ -113,7 +113,7 @@ class Light
 
 struct LSample
 {
-	LSample(SurfacePoint *s_p = nullptr): sp_(s_p) {}
+	explicit LSample(SurfacePoint *s_p = nullptr): sp_(s_p) {}
 	float s_1_, s_2_; //<! 2d sample value for choosing a surface point on the light.
 	float s_3_, s_4_; //<! 2d sample value for choosing an outgoing direction on the light (emitSample)
 	float pdf_; //<! "standard" directional pdf from illuminated surface point for MC integration of direct lighting (illumSample)

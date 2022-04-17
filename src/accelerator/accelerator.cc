@@ -29,7 +29,7 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Accelerator> Accelerator::factory(Logger &logger, const std::vector<const Primitive *> &primitives_list, ParamMap &params)
+const Accelerator * Accelerator::factory(Logger &logger, const std::vector<const Primitive *> &primitives_list, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
@@ -38,7 +38,7 @@ std::unique_ptr<Accelerator> Accelerator::factory(Logger &logger, const std::vec
 	}
 	std::string type;
 	params.getParam("type", type);
-	std::unique_ptr<Accelerator> accelerator;
+	const Accelerator *accelerator = nullptr;
 	if(type == "yafaray-kdtree-original") accelerator = AcceleratorKdTree::factory(logger, primitives_list, params);
 	else if(type == "yafaray-kdtree-multi-thread") accelerator = AcceleratorKdTreeMultiThread::factory(logger, primitives_list, params);
 	else if(type == "yafaray-simpletest") accelerator = AcceleratorSimpleTest::factory(logger, primitives_list, params);
@@ -59,7 +59,7 @@ std::pair<std::unique_ptr<const SurfacePoint>, float> Accelerator::intersect(con
 	const AcceleratorIntersectData accelerator_intersect_data = intersect(ray, t_max);
 	if(accelerator_intersect_data.hit_ && accelerator_intersect_data.hit_primitive_)
 	{
-		const Point3 hit_point = ray.from_ + accelerator_intersect_data.t_max_ * ray.dir_;
+		const Point3 hit_point{ray.from_ + accelerator_intersect_data.t_max_ * ray.dir_};
 		auto sp = accelerator_intersect_data.hit_primitive_->getSurface(ray.differentials_.get(), hit_point, accelerator_intersect_data, nullptr, camera);
 		return {std::move(sp), accelerator_intersect_data.t_max_};
 	}
@@ -83,7 +83,7 @@ std::tuple<bool, Rgb, const Primitive *> Accelerator::isShadowed(const Ray &ray,
 	sray.from_ += sray.dir_ * sray.tmin_;
 	const float t_max = (ray.tmax_ >= 0.f) ? sray.tmax_ - 2 * sray.tmin_ : std::numeric_limits<float>::infinity();
 	const AcceleratorTsIntersectData accelerator_intersect_data = intersectTs(sray, max_depth, t_max, shadow_bias, camera);
-	std::tuple<bool, Rgb, const Primitive *> result {false, {0.f}, nullptr};
+	std::tuple<bool, Rgb, const Primitive *> result {false, Rgb{0.f}, nullptr};
 	std::get<1>(result) = accelerator_intersect_data.transparent_color_;
 	if(accelerator_intersect_data.hit_)
 	{

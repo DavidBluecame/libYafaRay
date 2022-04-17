@@ -28,15 +28,15 @@ BEGIN_YAFARAY
 class CloudsTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		enum BiasType : int { None, Positive, Negative };
 		CloudsTexture(Logger &logger, int dep, float sz, bool hd,
 					  const Rgb &c_1, const Rgb &c_2,
 					  const std::string &ntype, const std::string &btype);
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 
 		int depth_, bias_;
 		float size_;
@@ -49,14 +49,14 @@ class CloudsTexture final : public Texture
 class MarbleTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		MarbleTexture(Logger &logger, int oct, float sz, const Rgb &c_1, const Rgb &c_2,
 					  float turb, float shp, bool hrd, const std::string &ntype, const std::string &shape);
 
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 
 		int octaves_;
 		Rgb color_1_, color_2_;
@@ -69,14 +69,14 @@ class MarbleTexture final : public Texture
 class WoodTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		WoodTexture(Logger &logger, int oct, float sz, const Rgb &c_1, const Rgb &c_2, float turb,
 					bool hrd, const std::string &ntype, const std::string &wtype, const std::string &shape);
 
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 
 		int octaves_;
 		Rgb color_1_, color_2_;
@@ -89,7 +89,7 @@ class WoodTexture final : public Texture
 class VoronoiTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		enum class ColorMode : int { IntensityWithoutColor, Position, PositionOutline, PositionOutlineIntensity};
@@ -98,8 +98,8 @@ class VoronoiTexture final : public Texture
 					   float w_1, float w_2, float w_3, float w_4,
 					   float mex, float sz,
 					   float isc, const std::string &dname);
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 
 		float w_1_, w_2_, w_3_, w_4_;	// feature weights
 		float aw_1_, aw_2_, aw_3_, aw_4_;	// absolute value of above
@@ -112,15 +112,15 @@ class VoronoiTexture final : public Texture
 class MusgraveTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		MusgraveTexture(Logger &logger, const Rgb &c_1, const Rgb &c_2,
 						float h, float lacu, float octs, float offs, float gain,
 						float size, float iscale,
 						const std::string &ntype, const std::string &mtype);
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 
 		Rgb color_1_, color_2_;
 		float size_, iscale_;
@@ -131,14 +131,14 @@ class MusgraveTexture final : public Texture
 class DistortedNoiseTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		DistortedNoiseTexture(Logger &logger, const Rgb &c_1, const Rgb &c_2,
 							  float distort, float size,
-							  const std::string &noiseb_1, const std::string noiseb_2);
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+							  const std::string &noiseb_1, const std::string &noiseb_2);
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 
 		Rgb color_1_, color_2_;
 		float distort_, size_;
@@ -152,24 +152,24 @@ class DistortedNoiseTexture final : public Texture
 class RgbCubeTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
-		RgbCubeTexture(Logger &logger) : Texture(logger) { }
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+		explicit RgbCubeTexture(Logger &logger) : Texture(logger) { }
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 };
 
 class BlendTexture final : public Texture
 {
 	public:
-		static std::unique_ptr<Texture> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static Texture *factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		enum ProgressionType : int { Linear, Quadratic, Easing, Diagonal, Spherical, QuadraticSphere, Radial };
 		BlendTexture(Logger &logger, const std::string &stype, bool use_flip_axis);
-		virtual Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
-		virtual float getFloat(const Point3 &p, const MipMapParams *mipmap_params = nullptr) const override;
+		Rgba getColor(const Point3 &p, const MipMapParams *mipmap_params) const override;
+		float getFloat(const Point3 &p, const MipMapParams *mipmap_params) const override;
 
 		ProgressionType progression_type_ = Linear;
 		bool use_flip_axis_ = false;

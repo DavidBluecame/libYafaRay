@@ -37,19 +37,16 @@
 
 BEGIN_YAFARAY
 
-DarkSkyBackground::DarkSkyBackground(Logger &logger, const Point3 dir, float turb, float pwr, float sky_bright, bool clamp, float av, float bv, float cv, float dv, float ev, float altitude, bool night, float exp, bool genc, ColorConv::ColorSpace cs, bool ibl, bool with_caustic):
+DarkSkyBackground::DarkSkyBackground(Logger &logger, const Point3 &dir, float turb, float pwr, float sky_bright, bool clamp, float av, float bv, float cv, float dv, float ev, float altitude, bool night, float exp, bool genc, ColorConv::ColorSpace cs) :
 		Background(logger), power_(pwr * sky_bright), sky_brightness_(sky_bright), color_conv_(clamp, genc, cs, exp), alt_(altitude), night_sky_(night)
 {
 	std::string act;
 
-	with_ibl_ = ibl;
-	shoot_caustic_ = with_caustic;
-
-	sun_dir_ = Vec3(dir);
-	sun_dir_.z_ += alt_;
+	sun_dir_ = dir;
+	sun_dir_.z() += alt_;
 	sun_dir_.normalize();
 
-	theta_s_ = math::acos(sun_dir_.z_);
+	theta_s_ = math::acos(sun_dir_.z());
 
 	act = (night_sky_) ? "ON" : "OFF";
 	if(logger_.isVerbose())
@@ -63,7 +60,6 @@ DarkSkyBackground::DarkSkyBackground(Logger &logger, const Point3 dir, float tur
 
 	cos_theta_s_ = math::cos(theta_s_);
 	cos_theta_2_ = cos_theta_s_ * cos_theta_s_;
-	sin_theta_s_ = math::sin(theta_s_);
 
 	theta_2_ = theta_s_ * theta_s_;
 	theta_3_ = theta_2_ * theta_s_;
@@ -150,20 +146,20 @@ Rgb DarkSkyBackground::getSunColorFromSunRad()
 		const double ozone = std::exp(ko(wavelength) * lm);
 		const double gas = std::exp((-1.41 * kg_lm) / std::pow(1 + 118.93 * kg_lm, 0.45));
 		const double water = std::exp((-0.2385 * kwa_lmw) / std::pow(1 + 20.07 * kwa_lmw, 0.45));
-		spdf = sun_radiance_curve(wavelength) * rayleigh * angstrom * ozone * gas * water;
+		spdf = Rgb{static_cast<float>(sun_radiance_curve(wavelength) * rayleigh * angstrom * ozone * gas * water)};
 		s_xyz += spectral_data::chromaMatch(wavelength) * spdf * 0.013513514;
 	}
 	return color_conv_.fromXyz(s_xyz, true);
 }
 
-double DarkSkyBackground::prePerez(const double *perez)
+double DarkSkyBackground::prePerez(const std::array<double, 6> &perez)
 {
 	const double p_num = ((1 + perez[0] * std::exp(perez[1])) * (1 + (perez[2] * std::exp(perez[3] * theta_s_)) + (perez[4] * cos_theta_2_)));
 	if(p_num == 0.0) return 0.0;
 	return 1.0 / p_num;
 }
 
-double DarkSkyBackground::perezFunction(const double *lam, double cos_theta, double gamma, double cos_gamma, double lvz) const
+double DarkSkyBackground::perezFunction(const std::array<double, 6> &lam, double cos_theta, double gamma, double cos_gamma, double lvz)
 {
 	const double num = ((1 + lam[0] * std::exp(lam[1] / cos_theta)) * (1 + lam[2] * std::exp(lam[3] * gamma) + lam[4] * cos_gamma));
 	return lvz * num * lam[5];
@@ -172,10 +168,10 @@ double DarkSkyBackground::perezFunction(const double *lam, double cos_theta, dou
 inline Rgb DarkSkyBackground::getSkyCol(const Vec3 &dir) const
 {
 	Vec3 iw {dir};
-	iw.z_ += alt_;
+	iw.z() += alt_;
 	iw.normalize();
 
-	double cos_theta = iw.z_;
+	double cos_theta = iw.z();
 	if(cos_theta <= 0.0) cos_theta = 1e-6;
 	double cos_gamma = iw * sun_dir_;
 	const double cos_gamma_2 = cos_gamma * cos_gamma;
@@ -190,17 +186,17 @@ inline Rgb DarkSkyBackground::getSkyCol(const Vec3 &dir) const
 	return sky_col * sky_brightness_;
 }
 
-Rgb DarkSkyBackground::operator()(const Vec3 &dir, bool from_postprocessed) const
+Rgb DarkSkyBackground::operator()(const Vec3 &dir, bool use_ibl_blur) const
 {
 	return getSkyCol(dir);
 }
 
-Rgb DarkSkyBackground::eval(const Vec3 &dir, bool from_postprocessed) const
+Rgb DarkSkyBackground::eval(const Vec3 &dir, bool use_ibl_blur) const
 {
 	return getSkyCol(dir) * power_;
 }
 
-std::unique_ptr<Background> DarkSkyBackground::factory(Logger &logger, ParamMap &params, Scene &scene)
+const Background * DarkSkyBackground::factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Point3 dir(1, 1, 1);
 	float turb = 4.0;
@@ -266,21 +262,21 @@ std::unique_ptr<Background> DarkSkyBackground::factory(Logger &logger, ParamMap 
 		pw *= 0.5;
 	}
 
-	auto dark_sky = std::unique_ptr<DarkSkyBackground>(new DarkSkyBackground(logger, dir, turb, power, bright, clamp, av, bv, cv, dv, ev, altitude, night, exp, gamma_enc, color_s, bgl, caus));
+	auto dark_sky = new DarkSkyBackground(logger, dir, turb, power, bright, clamp, av, bv, cv, dv, ev, altitude, night, exp, gamma_enc, color_s);
 
-	if(add_sun && math::radToDeg(math::acos(dir.z_)) < 100.0)
+	if(add_sun && math::radToDeg(math::acos(dir.z())) < 100.0)
 	{
 		Vec3 d(dir);
 		d.normalize();
 
 		Rgb suncol = dark_sky->getAttenuatedSunColor();
-		double angle = 0.5 * (2.0 - d.z_);
+		double angle = 0.5 * (2.0 - d.z());
 
 		if(logger.isVerbose()) logger.logVerbose("DarkSky: SunColor = ", suncol);
 
 		ParamMap p;
 		p["type"] = std::string("sunlight");
-		p["direction"] = Point3(d);
+		p["direction"] = d;
 		p["color"] = suncol;
 		p["angle"] = Parameter(angle);
 		p["power"] = Parameter(pw);
@@ -307,7 +303,7 @@ std::unique_ptr<Background> DarkSkyBackground::factory(Logger &logger, ParamMap 
 
 		Light *bglight = scene.createLight("DarkSky_bgLight", bgp);
 
-		bglight->setBackground(dark_sky.get());
+		bglight->setBackground(dark_sky);
 	}
 
 	if(logger.isVerbose()) logger.logVerbose("DarkSky: End");

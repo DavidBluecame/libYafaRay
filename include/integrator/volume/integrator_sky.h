@@ -30,17 +30,17 @@ class Background;
 class SkyIntegrator : public VolumeIntegrator
 {
 	public:
-		static std::unique_ptr<Integrator> factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control);
+		static Integrator *factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control);
 
 	private:
 		SkyIntegrator(Logger &logger, float s_size, float a, float ss, float t);
-		virtual std::string getShortName() const override { return "Sky"; }
-		virtual std::string getName() const override { return "Sky"; }
-		virtual bool preprocess(ImageFilm *image_film, const RenderView *render_view, const Scene &scene) override;
+		std::string getShortName() const override { return "Sky"; }
+		std::string getName() const override { return "Sky"; }
+		bool preprocess(ImageFilm *image_film, const RenderView *render_view, const Scene &scene) override;
 		// optical thickness, absorption, attenuation, extinction
-		virtual Rgb transmittance(RandomGenerator &random_generator, const Ray &ray) const override;
+		Rgb transmittance(RandomGenerator &random_generator, const Ray &ray) const override;
 		// emission and in-scattering
-		Rgb integrate(RandomGenerator &random_generator, const Ray &ray, int additional_depth = 0) const override;
+		Rgb integrate(RandomGenerator &random_generator, const Ray &ray, int additional_depth) const override;
 		Rgb skyTau(const Ray &ray) const;
 		Rgb skyTau(const Ray &ray, float beta, float alpha) const;
 		static float mieScatter(float theta);

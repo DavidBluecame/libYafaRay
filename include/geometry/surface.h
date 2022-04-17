@@ -70,10 +70,10 @@ class SurfacePoint final
 		void getUVdifferentials(float &du_dx, float &dv_dx, float &du_dy, float &dv_dy) const;
 		void setRayDifferentials(const RayDifferentials *ray_differentials);
 
-		std::unique_ptr<const MaterialData> initBsdf(const Camera *camera);
+		const MaterialData * initBsdf(const Camera *camera);
 		Rgb eval(const Vec3 &wo, const Vec3 &wl, const BsdfFlags &types, bool force_eval = false) const;
 		Rgb sample(const Vec3 &wo, Vec3 &wi, Sample &s, float &w, bool chromatic, float wavelength, const Camera *camera) const;
-		Rgb sample(const Vec3 &wo, Vec3 *const dir, Rgb &tcol, Sample &s, float *const w, bool chromatic, float wavelength) const;
+		Rgb sample(const Vec3 &wo, Vec3 *dir, Rgb &tcol, Sample &s, float *w, bool chromatic, float wavelength) const;
 		float pdf(const Vec3 &wo, const Vec3 &wi, const BsdfFlags &bsdfs) const;
 		Rgb getTransparency(const Vec3 &wo, const Camera *camera) const;
 		Specular getSpecular(int ray_level, const Vec3 &wo, bool chromatic, float wavelength) const;
@@ -120,7 +120,7 @@ class SurfacePoint final
 		std::shared_ptr<const SurfaceDifferentials> differentials_;
 
 	private:
-		void dUdvFromDpdPdUdPdV(float &du, float &dv, const Point3 &dp, const Vec3 &dp_du, const Vec3 &dp_dv) const;
+		static void dUdvFromDpdPdUdPdV(float &du, float &dv, const Point3 &dp, const Vec3 &dp_du, const Vec3 &dp_dv);
 };
 
 inline float SurfacePoint::getDistToNearestEdge() const
@@ -139,7 +139,7 @@ inline Vec3 SurfacePoint::normalFaceForward(const Vec3 &normal_geometry, const V
 	return (normal_geometry * incoming_vector) < 0 ? -normal : normal;
 }
 
-inline std::unique_ptr<const MaterialData> SurfacePoint::initBsdf(const Camera *camera)
+inline const MaterialData * SurfacePoint::initBsdf(const Camera *camera)
 {
 	return material_->initBsdf(*this, camera);
 }

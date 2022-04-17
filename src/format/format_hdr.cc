@@ -33,7 +33,7 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<Image> HdrFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
+Image * HdrFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
 {
 	std::FILE *fp = File::open(name, "rb");
 	logger_.logInfo(getFormatName(), ": Loading image \"", name, "\"...");
@@ -51,14 +51,14 @@ std::unique_ptr<Image> HdrFormat::loadFromFile(const std::string &name, const Im
 		return nullptr;
 	}
 	const Image::Type type = Image::getTypeFromSettings(true, grayscale_);
-	std::unique_ptr<Image> image = Image::factory(logger_, width, height, type, optimization);
+	auto image = Image::factory(logger_, width, height, type, optimization);
 	const int scan_width = (header_.y_first_) ? width : height;
 	// run length encoding is not allowed so read flat and exit
 	if((scan_width < 8) || (scan_width > 0x7fff))
 	{
 		for(int y = header_.min_[0]; y != header_.max_[0]; y += header_.step_[0])
 		{
-			if(!readOrle(fp, y, scan_width, image.get(), color_space, gamma))
+			if(!readOrle(fp, y, scan_width, image, color_space, gamma))
 			{
 				logger_.logError(getFormatName(), ": An error has occurred while reading uncompressed scanline...");
 				File::close(fp);
@@ -92,7 +92,7 @@ std::unique_ptr<Image> HdrFormat::loadFromFile(const std::string &name, const Im
 				File::close(fp);
 				return nullptr;
 			}
-			if(!readArle(fp, y, pix.getArleCount(), image.get(), color_space, gamma))
+			if(!readArle(fp, y, pix.getArleCount(), image, color_space, gamma))
 			{
 				logger_.logError(getFormatName(), ": An error has occurred while reading ARLE scanline...");
 				File::close(fp);
@@ -103,7 +103,7 @@ std::unique_ptr<Image> HdrFormat::loadFromFile(const std::string &name, const Im
 		{
 			// rewind the read pixel to start reading from the begining of the scanline
 			std::fseek(fp, static_cast<long int>(-sizeof(RgbePixel)), SEEK_CUR);
-			if(!readOrle(fp, y, scan_width, image.get(), color_space, gamma))
+			if(!readOrle(fp, y, scan_width, image, color_space, gamma))
 			{
 				logger_.logError(getFormatName(), ": An error has occurred while reading RLE scanline...");
 				File::close(fp);
@@ -158,7 +158,7 @@ bool HdrFormat::readHeader(FILE *fp, int &width, int &height)
 	std::fgets(linebuf, line_size, fp);
 	line = std::string(linebuf);
 	const std::vector<std::string> size_orient = string::tokenize(line);
-	header_.y_first_ = (size_orient[0].find("Y") != std::string::npos);
+	header_.y_first_ = (size_orient[0].find('Y') != std::string::npos);
 	int w = 3, h = 1;
 	int x = 2, y = 0;
 	int f = 0, s = 1;
@@ -172,8 +172,8 @@ bool HdrFormat::readHeader(FILE *fp, int &width, int &height)
 	string::converter(size_orient[h], height);
 
 	// Set the reading order to fit yafaray's image coordinates
-	const bool from_left = (size_orient[x].find("+") != std::string::npos);
-	const bool from_top = (size_orient[y].find("-") != std::string::npos);
+	const bool from_left = (size_orient[x].find('+') != std::string::npos);
+	const bool from_top = (size_orient[y].find('-') != std::string::npos);
 	header_.min_[f] = 0;
 	header_.max_[f] = height;
 	header_.step_[f] = 1;
@@ -412,11 +412,6 @@ bool HdrFormat::writeScanline(std::ofstream &file, RgbePixel *scanline, const Im
 		}
 	}
 	return true;
-}
-
-std::unique_ptr<Format> HdrFormat::factory(Logger &logger, ParamMap &params)
-{
-	return std::unique_ptr<Format>(new HdrFormat(logger));
 }
 
 END_YAFARAY

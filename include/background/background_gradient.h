@@ -30,12 +30,11 @@ BEGIN_YAFARAY
 class GradientBackground final : public Background
 {
 	public:
-		static std::unique_ptr<Background> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static const Background * factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
-		GradientBackground(Logger &logger, Rgb gzcol, Rgb ghcol, Rgb szcol, Rgb shcol, bool ibl, bool with_caustic);
-		virtual Rgb operator()(const Vec3 &dir, bool from_postprocessed = false) const override;
-		virtual Rgb eval(const Vec3 &dir, bool from_postprocessed = false) const override;
+		GradientBackground(Logger &logger, const Rgb &gzcol, const Rgb &ghcol, const Rgb &szcol, const Rgb &shcol);
+		Rgb eval(const Vec3 &dir, bool use_ibl_blur) const override;
 
 		Rgb gzenith_, ghoriz_, szenith_, shoriz_;
 };

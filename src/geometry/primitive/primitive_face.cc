@@ -30,7 +30,7 @@ FacePrimitive::FacePrimitive(const std::vector<int> &vertices_indices, const std
 
 Point3 FacePrimitive::getVertex(size_t vertex_number, const Matrix4 *obj_to_world) const
 {
-	const Point3 point = base_mesh_object_.getVertex(vertices_[vertex_number]);
+	const Point3 point{base_mesh_object_.getVertex(vertices_[vertex_number])};
 	if(obj_to_world) return (*obj_to_world) * point;
 	else return point;
 }
@@ -45,7 +45,7 @@ Vec3 FacePrimitive::getVertexNormal(size_t vertex_number, const Vec3 &surface_no
 {
 	if(vertex_normals_[vertex_number] >= 0)
 	{
-		const Vec3 vertex_normal = base_mesh_object_.getVertexNormal(vertex_normals_[vertex_number]);
+		const Vec3 vertex_normal{base_mesh_object_.getVertexNormal(vertex_normals_[vertex_number])};
 		if(obj_to_world) return ((*obj_to_world) * vertex_normal).normalize();
 		else return vertex_normal;
 	}
@@ -112,19 +112,19 @@ Bound FacePrimitive::getBound(const Matrix4 *obj_to_world) const
 
 Bound FacePrimitive::getBound(const std::vector<Point3> &vertices)
 {
-	Point3 min_point = vertices[0];
-	Point3 max_point = vertices[0];
+	Point3 min_point{vertices[0]};
+	Point3 max_point{vertices[0]};
 	const size_t num_vertices = vertices.size();
 	for(size_t vert_num = 1; vert_num < num_vertices; ++vert_num)
 	{
-		if(vertices[vert_num].x_ < min_point.x_) min_point.x_ = vertices[vert_num].x_;
-		if(vertices[vert_num].y_ < min_point.y_) min_point.y_ = vertices[vert_num].y_;
-		if(vertices[vert_num].z_ < min_point.z_) min_point.z_ = vertices[vert_num].z_;
-		if(vertices[vert_num].x_ > max_point.x_) max_point.x_ = vertices[vert_num].x_;
-		if(vertices[vert_num].y_ > max_point.y_) max_point.y_ = vertices[vert_num].y_;
-		if(vertices[vert_num].z_ > max_point.z_) max_point.z_ = vertices[vert_num].z_;
+		if(vertices[vert_num].x() < min_point.x()) min_point.x() = vertices[vert_num].x();
+		if(vertices[vert_num].y() < min_point.y()) min_point.y() = vertices[vert_num].y();
+		if(vertices[vert_num].z() < min_point.z()) min_point.z() = vertices[vert_num].z();
+		if(vertices[vert_num].x() > max_point.x()) max_point.x() = vertices[vert_num].x();
+		if(vertices[vert_num].y() > max_point.y()) max_point.y() = vertices[vert_num].y();
+		if(vertices[vert_num].z() > max_point.z()) max_point.z() = vertices[vert_num].z();
 	}
-	return Bound(min_point, max_point);
+	return {min_point, max_point};
 }
 
 Vec3 FacePrimitive::getGeometricNormal(const Matrix4 *obj_to_world, float, float) const

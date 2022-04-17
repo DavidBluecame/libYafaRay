@@ -242,9 +242,9 @@ void ExportC::writeParam(const std::string &name, const Parameter &param, std::o
 	}
 	else if(type == Parameter::Vector)
 	{
-		Point3 p(0.f);
+		Point3 p{0.f, 0.f, 0.f};
 		param.getVal(p);
-		file << "yafaray_paramsSetVector(yi, \"" << name << "\", " << p.x_ << ", " << p.y_ << ", " << p.z_ << ");\n";
+		file << "yafaray_paramsSetVector(yi, \"" << name << "\", " << p.x() << ", " << p.y() << ", " << p.z() << ");\n";
 	}
 	else if(type == Parameter::Color)
 	{
@@ -322,7 +322,7 @@ Texture *ExportC::createTexture(const char *name) noexcept
 	return nullptr;
 }
 
-Material *ExportC::createMaterial(const char *name) noexcept
+const Material *ExportC::createMaterial(const char *name) noexcept
 {
 	writeParamMap(*params_);
 	writeParamList(1);
@@ -334,7 +334,7 @@ Material *ExportC::createMaterial(const char *name) noexcept
 	if(section_num_lines_ >= section_max_lines_) file_ << sectionSplit();
 	return nullptr;
 }
-Camera *ExportC::createCamera(const char *name) noexcept
+const Camera * ExportC::createCamera(const char *name) noexcept
 {
 	writeParamMap(*params_);
 	params_->clear();
@@ -344,7 +344,7 @@ Camera *ExportC::createCamera(const char *name) noexcept
 	if(section_num_lines_ >= section_max_lines_) file_ << sectionSplit();
 	return nullptr;
 }
-Background *ExportC::createBackground(const char *name) noexcept
+const Background * ExportC::createBackground(const char *name) noexcept
 {
 	writeParamMap(*params_);
 	params_->clear();

@@ -29,6 +29,7 @@
 #include "color/color_layers.h"
 #include "scene/scene.h"
 
+#include <ImfVersion.h>
 #include <ImfOutputFile.h>
 #include <ImfChannelList.h>
 #include <ImfRgbaFile.h>
@@ -45,11 +46,11 @@ class CiStream: public Imf::IStream
 {
 	public:
 		CiStream(std::FILE *file, const char file_name[]) : Imf::IStream(file_name), file_(file) { }
-		virtual ~CiStream() override;
-		virtual bool read(char c[], int n) override;
-		virtual Int64 tellg() override;
-		virtual void seekg(Int64 pos) override;
-		virtual void clear() override;
+		~CiStream() override;
+		bool read(char c[], int n) override;
+		uint64_t tellg() override;
+		void seekg(uint64_t pos) override;
+		void clear() override;
 		void close();
 	private:
 		std::FILE *file_ = nullptr;
@@ -72,13 +73,13 @@ bool CiStream::read(char c[], int n)
 	else return false;
 }
 
-Int64 CiStream::tellg()
+uint64_t CiStream::tellg()
 {
 	if(file_) return std::ftell(file_);
 	else return 0;
 }
 
-void CiStream::seekg(Int64 pos)
+void CiStream::seekg(uint64_t pos)
 {
 	if(file_)
 	{
@@ -111,10 +112,10 @@ class CoStream: public Imf::OStream
 {
 	public:
 		CoStream(std::FILE *file, const char file_name[]) : Imf::OStream(file_name), file_(file) { }
-		virtual ~CoStream() override;
-		virtual void write(const char c[], int n) override;
-		virtual Int64 tellp() override;
-		virtual void seekp(Int64 pos) override;
+		~CoStream() override;
+		void write(const char c[], int n) override;
+		uint64_t tellp() override;
+		void seekp(uint64_t pos) override;
 		void close();
 	private:
 		std::FILE *file_ = nullptr;
@@ -135,13 +136,13 @@ void CoStream::write(const char c[], int n)
 	}
 }
 
-Int64 CoStream::tellp()
+uint64_t CoStream::tellp()
 {
 	if(file_) return std::ftell(file_);
 	else return 0;
 }
 
-void CoStream::seekp(Int64 pos)
+void CoStream::seekp(uint64_t pos)
 {
 	if(file_)
 	{
@@ -318,7 +319,7 @@ bool ExrFormat::saveToFileMultiChannel(const std::string &name, const ImageLayer
 	return result;
 }
 
-std::unique_ptr<Image> ExrFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
+Image * ExrFormat::loadFromFile(const std::string &name, const Image::Optimization &optimization, const ColorSpace &color_space, float gamma)
 {
 	std::FILE *fp = File::open(name.c_str(), "rb");
 	logger_.logInfo(getFormatName(), ": Loading image \"", name, "\"...");
@@ -336,7 +337,7 @@ std::unique_ptr<Image> ExrFormat::loadFromFile(const std::string &name, const Im
 		std::fseek(fp, 0, SEEK_SET);
 	}
 
-	std::unique_ptr<Image> image;
+	Image *image = nullptr;
 	try
 	{
 		CiStream istr(fp, name.c_str());
@@ -371,11 +372,6 @@ std::unique_ptr<Image> ExrFormat::loadFromFile(const std::string &name, const Im
 		image = nullptr;
 	}
 	return image;
-}
-
-std::unique_ptr<Format> ExrFormat::factory(Logger &logger, ParamMap &params)
-{
-	return std::unique_ptr<Format>(new ExrFormat(logger));
 }
 
 END_YAFARAY

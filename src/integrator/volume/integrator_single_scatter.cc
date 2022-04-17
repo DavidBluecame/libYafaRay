@@ -62,12 +62,12 @@ bool SingleScatterIntegrator::preprocess(ImageFilm *image_film, const RenderView
 
 			logger_.logParams("SingleScatter: volume, attGridMaps with size: ", x_size, " ", y_size, " ", x_size);
 
-			for(auto l = lights_.begin(); l != lights_.end(); ++l)
+			for(const auto &light : lights_)
 			{
 				Rgb lcol(0.0);
 
-				float *attenuation_grid = (float *)malloc(x_size * y_size * z_size * sizeof(float));
-				vr->attenuation_grid_map_[(*l)] = attenuation_grid;
+				auto *attenuation_grid = static_cast<float *>(malloc(x_size * y_size * z_size * sizeof(float)));
+				vr->attenuation_grid_map_[light] = attenuation_grid;
 
 				for(int z = 0; z < z_size; ++z)
 				{
@@ -76,9 +76,9 @@ bool SingleScatterIntegrator::preprocess(ImageFilm *image_film, const RenderView
 						for(int x = 0; x < x_size; ++x)
 						{
 							// generate the world position inside the grid
-							Point3 p(bb.longX() * x_size_inv * x + bb.a_.x_,
-									 bb.longY() * y_size_inv * y + bb.a_.y_,
-									 bb.longZ() * z_size_inv * z + bb.a_.z_);
+							Point3 p(bb.longX() * x_size_inv * x + bb.a_.x(),
+									 bb.longY() * y_size_inv * y + bb.a_.y(),
+									 bb.longZ() * z_size_inv * z + bb.a_.z());
 
 							SurfacePoint sp;
 							sp.p_ = p;
@@ -88,9 +88,9 @@ bool SingleScatterIntegrator::preprocess(ImageFilm *image_film, const RenderView
 							light_ray.from_ = sp.p_;
 
 							// handle lights with delta distribution, e.g. point and directional lights
-							if((*l)->diracLight())
+							if(light->diracLight())
 							{
-								bool ill = (*l)->illuminate(sp, lcol, light_ray);
+								bool ill = light->illuminate(sp, lcol, light_ray);
 								light_ray.tmin_ = shadow_bias_;
 								if(light_ray.tmax_ < 0.f) light_ray.tmax_ = 1e10;  // infinitely distant light
 
@@ -110,7 +110,7 @@ bool SingleScatterIntegrator::preprocess(ImageFilm *image_film, const RenderView
 							else // area light and suchlike
 							{
 								float light_tr = 0;
-								int n = (*l)->nSamples() >> 1; // samples / 2
+								int n = light->nSamples() >> 1; // samples / 2
 								if(n < 1) n = 1;
 								LSample ls;
 								for(int i = 0; i < n; ++i)
@@ -118,7 +118,7 @@ bool SingleScatterIntegrator::preprocess(ImageFilm *image_film, const RenderView
 									ls.s_1_ = 0.5f; //(*state.random_generator)();
 									ls.s_2_ = 0.5f; //(*state.random_generator)();
 
-									(*l)->illumSample(sp, ls, light_ray);
+									light->illumSample(sp, ls, light_ray);
 									light_ray.tmin_ = shadow_bias_;
 									if(light_ray.tmax_ < 0.f) light_ray.tmax_ = 1e10;  // infinitely distant light
 
@@ -150,14 +150,14 @@ Rgb SingleScatterIntegrator::getInScatter(RandomGenerator &random_generator, con
 	Ray light_ray;
 	light_ray.from_ = sp.p_;
 
-	for(auto l = lights_.begin(); l != lights_.end(); ++l)
+	for(const auto &light : lights_)
 	{
 		Rgb lcol(0.0);
 
 		// handle lights with delta distribution, e.g. point and directional lights
-		if((*l)->diracLight())
+		if(light->diracLight())
 		{
-			if((*l)->illuminate(sp, lcol, light_ray))
+			if(light->illuminate(sp, lcol, light_ray))
 			{
 				// ...shadowed...
 				if(light_ray.tmax_ < 0.f) light_ray.tmax_ = 1e10;  // infinitely distant light
@@ -172,7 +172,7 @@ Rgb SingleScatterIntegrator::getInScatter(RandomGenerator &random_generator, con
 						for(const auto &v : *volume_regions_)
 						{
 							const Bound::Cross cross = v.second->crossBound(light_ray);
-							if(cross.crossed_) light_tr += v.second->attenuation(sp.p_, (*l));
+							if(cross.crossed_) light_tr += v.second->attenuation(sp.p_, light);
 						}
 					}
 					else
@@ -193,7 +193,7 @@ Rgb SingleScatterIntegrator::getInScatter(RandomGenerator &random_generator, con
 		}
 		else // area light and suchlike
 		{
-			int n = (*l)->nSamples() >> 2; // samples / 4
+			int n = light->nSamples() >> 2; // samples / 4
 			if(n < 1) n = 1;
 			float i_n = 1.f / (float)n; // inverse of n
 			Rgb ccol(0.0);
@@ -206,7 +206,7 @@ Rgb SingleScatterIntegrator::getInScatter(RandomGenerator &random_generator, con
 				ls.s_1_ = random_generator();
 				ls.s_2_ = random_generator();
 
-				if((*l)->illumSample(sp, ls, light_ray))
+				if(light->illumSample(sp, ls, light_ray))
 				{
 					// ...shadowed...
 					if(light_ray.tmax_ < 0.f) light_ray.tmax_ = 1e10;  // infinitely distant light
@@ -224,7 +224,7 @@ Rgb SingleScatterIntegrator::getInScatter(RandomGenerator &random_generator, con
 								const Bound::Cross cross = v.second->crossBound(light_ray);
 								if(cross.crossed_)
 								{
-									light_tr += v.second->attenuation(sp.p_, (*l));
+									light_tr += v.second->attenuation(sp.p_, light);
 									break;
 								}
 							}
@@ -261,8 +261,8 @@ Rgb SingleScatterIntegrator::getInScatter(RandomGenerator &random_generator, con
 
 Rgb SingleScatterIntegrator::transmittance(RandomGenerator &random_generator, const Ray &ray) const
 {
-	if(vr_size_ == 0) return {1.f};
-	Rgba tr(1.f);
+	if(vr_size_ == 0) return Rgb{1.f};
+	Rgb tr{1.f};
 	for(const auto &v : *volume_regions_)
 	{
 		const Bound::Cross cross = v.second->crossBound(ray);
@@ -270,7 +270,7 @@ Rgb SingleScatterIntegrator::transmittance(RandomGenerator &random_generator, co
 		{
 			const float random_value = random_generator();
 			const Rgb optical_thickness = v.second->tau(ray, step_size_, random_value);
-			tr *= Rgb(math::exp(-optical_thickness.energy()));
+			tr *= Rgb{math::exp(-optical_thickness.energy())};
 		}
 	}
 	return tr;
@@ -278,7 +278,7 @@ Rgb SingleScatterIntegrator::transmittance(RandomGenerator &random_generator, co
 
 Rgb SingleScatterIntegrator::integrate(RandomGenerator &random_generator, const Ray &ray, int additional_depth) const
 {
-	if(vr_size_ == 0) return {0.f};
+	if(vr_size_ == 0) return Rgb{0.f};
 	const bool hit = (ray.tmax_ > 0.f);
 	float t_0 = 1e10f, t_1 = -1e10f;
 	// find min t0 and max t1
@@ -293,7 +293,7 @@ Rgb SingleScatterIntegrator::integrate(RandomGenerator &random_generator, const 
 		if(cross.enter_ < t_0) t_0 = cross.enter_;
 	}
 	float dist = t_1 - t_0;
-	if(dist < 1e-3f) return {0.f};
+	if(dist < 1e-3f) return Rgb{0.f};
 
 	float pos = t_0 - random_generator() * step_size_; // start position of ray marching
 	dist = t_1 - pos;
@@ -309,11 +309,11 @@ Rgb SingleScatterIntegrator::integrate(RandomGenerator &random_generator, const 
 		accum_density.at(0) = 0.f;
 		for(int i = 0; i < samples; ++i)
 		{
-			const Point3 p = ray.from_ + (step_size_ * i + pos) * ray.dir_;
+			const Point3 p{ray.from_ + (step_size_ * i + pos) * ray.dir_};
 			float density = 0;
 			for(const auto &v : *volume_regions_)
 			{
-				density += v.second->sigmaT(p, Vec3()).energy();
+				density += v.second->sigmaT(p, {}).energy();
 			}
 			density_samples.at(i) = density;
 			if(i > 0) accum_density.at(i) = accum_density.at(i - 1) + density * step_size_;
@@ -352,7 +352,7 @@ Rgb SingleScatterIntegrator::integrate(RandomGenerator &random_generator, const 
 		const Ray step_ray(ray.from_ + (ray.dir_ * pos), ray.dir_, 0, current_step, 0);
 		if(adaptive_)
 		{
-			step_tau = accum_density.at(step_sample);
+			step_tau = Rgb{accum_density.at(step_sample)};
 		}
 		else
 		{
@@ -365,7 +365,7 @@ Rgb SingleScatterIntegrator::integrate(RandomGenerator &random_generator, const 
 				}
 			}
 		}
-		tr_tmp = math::exp(-step_tau.energy());
+		tr_tmp = Rgb{math::exp(-step_tau.energy())};
 		if(optimize_ && tr_tmp.energy() < 1e-3f)
 		{
 			const float random_val = random_generator();
@@ -416,7 +416,7 @@ Rgb SingleScatterIntegrator::integrate(RandomGenerator &random_generator, const 
 	return col;
 }
 
-std::unique_ptr<Integrator> SingleScatterIntegrator::factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control)
+Integrator * SingleScatterIntegrator::factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control)
 {
 	bool adapt = false;
 	bool opt = false;
@@ -424,7 +424,7 @@ std::unique_ptr<Integrator> SingleScatterIntegrator::factory(Logger &logger, Par
 	params.getParam("stepSize", s_size);
 	params.getParam("adaptive", adapt);
 	params.getParam("optimize", opt);
-	return std::unique_ptr<Integrator>(new SingleScatterIntegrator(logger, s_size, adapt, opt));
+	return new SingleScatterIntegrator(logger, s_size, adapt, opt);
 }
 
 END_YAFARAY

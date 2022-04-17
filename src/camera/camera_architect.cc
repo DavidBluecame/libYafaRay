@@ -58,7 +58,7 @@ void ArchitectCamera::setAxis(const Vec3 &vx, const Vec3 &vy, const Vec3 &vz)
 	dof_up_ = cam_y_ * aperture_;
 
 	vright_ = cam_x_;
-	vup_ = aspect_ratio_ * Vec3(0, 0, -1);
+	vup_ = aspect_ratio_ * Vec3{0.f, 0.f, -1.f};
 	vto_ = (cam_z_ * focal_distance_) - 0.5 * (vup_ + vright_);
 	vup_ /= (float)resy_;
 	vright_ /= (float)resx_;
@@ -67,33 +67,33 @@ void ArchitectCamera::setAxis(const Vec3 &vx, const Vec3 &vy, const Vec3 &vz)
 Point3 ArchitectCamera::screenproject(const Point3 &p) const
 {
 	// FIXME
-	const Vec3 dir = p - position_;
+	const Vec3 dir{p - position_};
 	// project p to pixel plane:
-	const Vec3 camy = Vec3(0, 0, 1);
-	const Vec3 camz = camy ^cam_x_;
-	const Vec3 camx = camz ^camy;
+	const Vec3 camy{0.f, 0.f, 1.f};
+	const Vec3 camz{camy ^ cam_x_};
+	const Vec3 camx{camz ^camy};
 
 	const float dx = dir * camx;
 	const float dy = dir * cam_y_;
 	float dz = dir * camz;
 
 	Point3 s;
-	s.y_ = 2 * dy * focal_distance_ / (dz * aspect_ratio_);
+	s.y() = 2 * dy * focal_distance_ / (dz * aspect_ratio_);
 	// Needs focal_distance correction
 	const float fod = focal_distance_ * camy * cam_y_ / (camx * cam_x_);
-	s.x_ = 2 * dx * fod / dz;
-	s.z_ = 0.f;
+	s.x() = 2 * dx * fod / dz;
+	s.z() = 0.f;
 	return s;
 }
 
-std::unique_ptr<Camera> ArchitectCamera::factory(Logger &logger, ParamMap &params, const Scene &scene)
+const Camera * ArchitectCamera::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	std::string bkhtype = "disk1", bkhbias = "uniform";
 	Point3 from(0, 1, 0), to(0, 0, 0), up(0, 1, 1);
 	int resx = 320, resy = 200;
 	float aspect = 1, dfocal = 1, apt = 0, dofd = 0, bkhrot = 0;
 	float near_clip = 0.0f, far_clip = -1.0f;
-	std::string view_name = "";
+	std::string view_name;
 
 	params.getParam("from", from);
 	params.getParam("to", to);
@@ -123,7 +123,7 @@ std::unique_ptr<Camera> ArchitectCamera::factory(Logger &logger, ParamMap &param
 	if(bkhbias == "center") 		bbt = BbCenter;
 	else if(bkhbias == "edge") 		bbt = BbEdge;
 
-	return std::unique_ptr<Camera>(new ArchitectCamera(logger, from, to, up, resx, resy, aspect, dfocal, apt, dofd, bt, bbt, bkhrot, near_clip, far_clip));
+	return new ArchitectCamera(logger, from, to, up, resx, resy, aspect, dfocal, apt, dofd, bt, bbt, bkhrot, near_clip, far_clip);
 }
 
 END_YAFARAY

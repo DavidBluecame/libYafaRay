@@ -228,7 +228,7 @@ std::pair<Rgb, float> BidirectionalIntegrator::integrate(Ray &ray, RandomGenerat
 	std::tie(sp, intersect_tmax) = accelerator_->intersect(ray, camera_); //FIXME: should we change directly ray.tmax_ here or not?
 	if(sp)
 	{
-		const Vec3 wo = -ray.dir_;
+		const Vec3 wo{-ray.dir_};
 		PathData path_data;
 		++n_paths_;
 		PathVertex &ve = path_data.eye_path_.front();
@@ -256,8 +256,8 @@ std::pair<Rgb, float> BidirectionalIntegrator::integrate(Ray &ray, RandomGenerat
 		Ray lray;
 		lray.tmin_ = ray_min_dist_;
 		lray.tmax_ = -1.f;
-		float light_num_pdf;
-		const int light_num = light_power_d_->dSample(random_generator(), light_num_pdf);
+		float light_num_pdf = 0.f;
+		const int light_num = lights_.size() > 0 ? light_power_d_->dSample(random_generator(), light_num_pdf) : -1;
 		light_num_pdf *= f_num_lights_;
 		LSample ls;
 		ls.s_1_ = random_generator(), ls.s_2_ = random_generator(), ls.s_3_ = random_generator(), ls.s_4_ = random_generator();
@@ -348,7 +348,7 @@ std::pair<Rgb, float> BidirectionalIntegrator::integrate(Ray &ray, RandomGenerat
 			path_data.pdf_emit_ = o_pdf_emit;
 			// light paths with one vertices are handled by classic direct light sampling (like regular path tracing)
 			// hence we start with s=2 here. currently the sampling probability is the same though, so weights are unaffected
-			path_data.light_ = lights_.size() > 0 ? lights_[light_num] : 0;
+			path_data.light_ = lights_.size() > 0 ? lights_[light_num] : nullptr;
 			for(int s = 2; s <= n_light; ++s)
 			{
 				clearPath(path_data.path_, s, t);
@@ -384,7 +384,6 @@ std::pair<Rgb, float> BidirectionalIntegrator::integrate(Ray &ray, RandomGenerat
 int BidirectionalIntegrator::createPath(RandomGenerator &random_generator, const Accelerator &accelerator, bool chromatic_enabled, float wavelength, const Ray &start, std::vector<PathVertex> &path, int max_len, const Camera *camera) const
 {
 	Ray ray {start, Ray::DifferentialsCopy::FullCopy};
-	BsdfFlags m_bsdf;
 	// the 0th vertex has already been generated, which is ray.pos obviously
 	int n_vert = 1;
 	while(n_vert < max_len)
@@ -477,14 +476,14 @@ void BidirectionalIntegrator::copyEyeSubpath(PathData &pd, int s, int t)
 
 
 //===  connect paths with s and t > 1  ===//
-bool BidirectionalIntegrator::connectPaths(PathData &pd, int s, int t) const
+bool BidirectionalIntegrator::connectPaths(PathData &pd, int s, int t)
 {
 	const PathVertex &y = pd.light_path_[s - 1];
 	const PathVertex &z = pd.eye_path_[t - 1];
 	PathEvalVertex &x_l = pd.path_[s - 1];
 	PathEvalVertex &x_e = pd.path_[s];
 	// precompute stuff in pc that is specific to the current connection of sub-paths
-	Vec3 vec = z.sp_.p_ - y.sp_.p_;
+	Vec3 vec{z.sp_.p_ - y.sp_.p_};
 	const float dist_2 = vec.normLenSqr();
 	const float cos_y = std::abs(y.sp_.n_ * vec);
 	const float cos_z = std::abs(z.sp_.n_ * vec);
@@ -566,13 +565,13 @@ bool BidirectionalIntegrator::connectLPath(PathData &pd, Ray &l_ray, Rgb &lcol, 
 	if(!light->illumSample(z.sp_, ls, l_ray)) return false;
 
 	//FIXME DAVID: another series of horrible hacks to avoid uninitialized values and incorrect renders in bidir. However, this should be properly solved by implementing correctly the functions needed by bidir in the lights and materials, and correcting the bidir integrator itself...
-	ls.sp_->p_ = Point3(0.f, 0.f, 0.f);
-	Vec3 wo = l_ray.dir_;
+	ls.sp_->p_ = {0.f, 0.f, 0.f};
+	Vec3 wo{l_ray.dir_};
 	light->emitSample(wo, ls);
 	ls.flags_ = static_cast<Light::Flags>(0xFFFFFFFF);
 	lcol = ls.col_ / (ls.pdf_ * light_num_pdf); //shouldn't really do that division, better use proper c_st in evalLPath...
 	// get probabilities for generating light sample without a given surface point
-	const Vec3 vec = -l_ray.dir_;
+	const Vec3 vec{-l_ray.dir_};
 	light->emitPdf(sp_light, vec, pd.path_[0].pdf_a_0_, pd.path_[0].pdf_f_, cos_wo);
 	pd.path_[0].pdf_a_0_ *= light_num_pdf;
 	pd.path_[0].pdf_f_ /= cos_wo;
@@ -622,7 +621,7 @@ bool BidirectionalIntegrator::connectPathE(PathData &pd, int s) const
 	const PathVertex &z = pd.eye_path_[0];
 	PathEvalVertex &x_l = pd.path_[s - 1];
 	PathEvalVertex &x_e = pd.path_[s];
-	Vec3 vec = z.sp_.p_ - y.sp_.p_;
+	Vec3 vec{z.sp_.p_ - y.sp_.p_};
 	const float dist_2 = vec.normLenSqr();
 	const float cos_y = std::abs(y.sp_.n_ * vec);
 	const Ray wo(z.sp_.p_, -vec);
@@ -660,7 +659,7 @@ bool BidirectionalIntegrator::connectPathE(PathData &pd, int s) const
  ============================================================ */
 
 // compute path densities and weight path
-float BidirectionalIntegrator::pathWeight(int s, int t, const PathData &pd) const
+float BidirectionalIntegrator::pathWeight(int s, int t, const PathData &pd)
 {
 	const std::vector<PathEvalVertex> &path = pd.path_;
 	std::vector<float> p, pr;
@@ -790,7 +789,7 @@ Rgb BidirectionalIntegrator::evalPath(const Accelerator &accelerator, int s, int
 	const Primitive *shadow_casting_primitive = nullptr;
 	if(tr_shad_) std::tie(shadowed, scol, shadow_casting_primitive) = accelerator_->isShadowed(con_ray, s_depth_, shadow_bias_, camera_);
 	else std::tie(shadowed, shadow_casting_primitive) = accelerator_->isShadowed(con_ray, shadow_bias_);
-	if(shadowed) return Rgb(0.f);
+	if(shadowed) return Rgb{0.f};
 	if(tr_shad_) c_uw *= scol;
 	return c_uw;
 }
@@ -803,7 +802,7 @@ Rgb BidirectionalIntegrator::evalLPath(const Accelerator &accelerator, int t, co
 	const Primitive *shadow_casting_primitive = nullptr;
 	if(tr_shad_) std::tie(shadowed, scol, shadow_casting_primitive) = accelerator_->isShadowed(l_ray, s_depth_, shadow_bias_, camera_);
 	else std::tie(shadowed, shadow_casting_primitive) = accelerator_->isShadowed(l_ray, shadow_bias_);
-	if(shadowed) return Rgb(0.f);
+	if(shadowed) return Rgb{0.f};
 	const PathVertex &z = pd.eye_path_[t - 1];
 	Rgb c_uw = lcol * pd.f_z_ * z.alpha_ * std::abs(z.sp_.n_ * l_ray.dir_); // f_y, cos_x0_f and r^2 computed in connectLPath...(light pdf)
 	if(tr_shad_) c_uw *= scol;
@@ -827,7 +826,7 @@ Rgb BidirectionalIntegrator::evalPathE(const Accelerator &accelerator, int s, co
 	const Primitive *shadow_casting_primitive = nullptr;
 	if(tr_shad_) std::tie(shadowed, scol, shadow_casting_primitive) = accelerator_->isShadowed(con_ray, s_depth_, shadow_bias_, camera_);
 	else std::tie(shadowed, shadow_casting_primitive) = accelerator_->isShadowed(con_ray, shadow_bias_);
-	if(shadowed) return Rgb(0.f);
+	if(shadowed) return Rgb{0.f};
 	//eval material
 	//Rgb f_y = y.sp.material->eval(state, y.sp, y.wi, pd.w_l_e, BSDF_ALL);
 	//TODO:
@@ -846,7 +845,7 @@ Rgb BidirectionalIntegrator::evalPathE(const Accelerator &accelerator, int s, co
     const material_t *oneMat = sp.material;
     lightRay.from = sp.P;
     int nLightsI = lights.size();
-    if(nLightsI == 0) return Rgb(0.f);
+    if(nLightsI == 0) return {0.f};
     float s1, s2, lightPdf, lightNumPdf;
     int lnum = lightPowerD->DSample((*state.random_generator)(), &lightNumPdf);
     if(lnum > nLightsI-1) lnum = nLightsI-1;
@@ -891,7 +890,7 @@ Rgb BidirectionalIntegrator::evalPathE(const Accelerator &accelerator, int s, co
     return col/lightNumPdf;
 } */
 
-std::unique_ptr<Integrator> BidirectionalIntegrator::factory(Logger &logger, ParamMap &params, const Scene &scene, RenderControl &render_control)
+Integrator * BidirectionalIntegrator::factory(Logger &logger, const ParamMap &params, const Scene &scene, RenderControl &render_control)
 {
 	bool do_ao = false;
 	int ao_samples = 32;
@@ -911,7 +910,7 @@ std::unique_ptr<Integrator> BidirectionalIntegrator::factory(Logger &logger, Par
 	params.getParam("bg_transp", bg_transp);
 	params.getParam("bg_transp_refract", bg_transp_refract);
 
-	auto inte = std::unique_ptr<BidirectionalIntegrator>(new BidirectionalIntegrator(render_control, logger, transp_shad, shadow_depth));
+	auto inte = new BidirectionalIntegrator(render_control, logger, transp_shad, shadow_depth);
 
 	// AO settings
 	inte->use_ambient_occlusion_ = do_ao;

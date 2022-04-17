@@ -30,15 +30,15 @@ class Scene;
 class BeerVolumeHandler : public VolumeHandler
 {
 	public:
-		static std::unique_ptr<VolumeHandler> factory(Logger &logger, const ParamMap &params, const Scene &scene);
+		static VolumeHandler *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 
 	protected:
 		BeerVolumeHandler(Logger &logger, const Rgb &sigma): VolumeHandler(logger), sigma_a_(sigma) {};
 		BeerVolumeHandler(Logger &logger, const Rgb &acol, double dist);
 
 	private:
-		virtual Rgb transmittance(const Ray &ray) const override;
-		virtual bool scatter(const Ray &ray, Ray &s_ray, PSample &s) const override;
+		Rgb transmittance(const Ray &ray) const override;
+		bool scatter(const Ray &ray, Ray &s_ray, PSample &s) const override;
 		Rgb getSubSurfaceColor(const MaterialData &mat_data) const { return sigma_a_; }
 		Rgb sigma_a_;
 };

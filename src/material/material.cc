@@ -40,7 +40,7 @@ unsigned int Material::material_index_highest_ = 1;
 unsigned int Material::material_index_auto_ = 0;
 float Material::highest_sampling_factor_ = 1.f;
 
-std::unique_ptr<Material> Material::factory(Logger &logger, ParamMap &params, std::list<ParamMap> &nodes_params, const Scene &scene)
+const Material *Material::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params)
 {
 	if(logger.isDebug())
 	{
@@ -49,16 +49,16 @@ std::unique_ptr<Material> Material::factory(Logger &logger, ParamMap &params, st
 	}
 	std::string type;
 	params.getParam("type", type);
-	if(type == "blend_mat") return BlendMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "coated_glossy") return CoatedGlossyMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "glass") return GlassMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "mirror") return MirrorMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "null") return NullMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "glossy") return GlossyMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "rough_glass") return RoughGlassMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "shinydiffusemat") return ShinyDiffuseMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "light_mat") return LightMaterial::factory(logger, params, nodes_params, scene);
-	else if(type == "mask_mat") return MaskMaterial::factory(logger, params, nodes_params, scene);
+	if(type == "blend_mat") return BlendMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "coated_glossy") return CoatedGlossyMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "glass") return GlassMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "mirror") return MirrorMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "null") return NullMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "glossy") return GlossyMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "rough_glass") return RoughGlassMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "shinydiffusemat") return ShinyDiffuseMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "light_mat") return LightMaterial::factory(logger, scene, name, params, nodes_params);
+	else if(type == "mask_mat") return MaskMaterial::factory(logger, scene, name, params, nodes_params);
 	else return nullptr;
 }
 
@@ -82,13 +82,13 @@ Material::~Material()
 	resetMaterialIndex();
 }
 
-Rgb Material::sampleClay(const SurfacePoint &sp, const Vec3 &wo, Vec3 &wi, Sample &s, float &w) const
+Rgb Material::sampleClay(const SurfacePoint &sp, const Vec3 &wo, Vec3 &wi, Sample &s, float &w)
 {
-	const Vec3 n = SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo);
+	const Vec3 n{SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo)};
 	wi = sample::cosHemisphere(n, sp.nu_, sp.nv_, s.s_1_, s.s_2_);
 	s.pdf_ = std::abs(wi * n);
 	w = (std::abs(wi * sp.n_)) / (s.pdf_ * 0.99f + 0.01f);
-	return {1.f};	//Clay color White 100%
+	return Rgb{1.f};	//Clay color White 100%
 }
 
 
@@ -129,7 +129,7 @@ void Material::applyWireFrame(Rgba &col, float wire_frame_amount, const SurfaceP
 		{
 			wire_frame_amount *= math::pow((wireframe_thickness_ - dist) / wireframe_thickness_, wireframe_exponent_);
 		}
-		col.blend(wire_frame_col, wire_frame_amount);
+		col.blend(Rgba{wire_frame_col}, wire_frame_amount);
 		col.a_ = wire_frame_amount;
 	}
 }
@@ -155,7 +155,7 @@ bool Material::scatterPhoton(const MaterialData *mat_data, const SurfacePoint &s
 
 Rgb Material::getReflectivity(const MaterialData *mat_data, const SurfacePoint &sp, BsdfFlags flags, bool chromatic, float wavelength, const Camera *camera) const
 {
-	if(!flags.hasAny((BsdfFlags::Transmit | BsdfFlags::Reflect) & bsdf_flags_)) return Rgb(0.f);
+	if(!flags.hasAny((BsdfFlags::Transmit | BsdfFlags::Reflect) & bsdf_flags_)) return Rgb{0.f};
 	Rgb total(0.f);
 	for(int i = 0; i < 16; ++i)
 	{
@@ -163,7 +163,7 @@ Rgb Material::getReflectivity(const MaterialData *mat_data, const SurfacePoint &
 		const float s_2 = sample::riVdC(i);
 		const float s_3 = Halton::lowDiscrepancySampling(2, i);
 		const float s_4 = Halton::lowDiscrepancySampling(3, i);
-		const Vec3 wo = sample::cosHemisphere(sp.n_, sp.nu_, sp.nv_, s_1, s_2);
+		const Vec3 wo{sample::cosHemisphere(sp.n_, sp.nu_, sp.nv_, s_1, s_2)};
 		Vec3 wi;
 		Sample s(s_3, s_4, flags);
 		float w = 0.f;
@@ -173,7 +173,7 @@ Rgb Material::getReflectivity(const MaterialData *mat_data, const SurfacePoint &
 	return total * 0.0625f; //total / 16.f
 }
 
-void Material::applyBump(SurfacePoint &sp, const DuDv &du_dv) const
+void Material::applyBump(SurfacePoint &sp, const DuDv &du_dv)
 {
 	sp.nu_ += du_dv.getDu() * sp.n_;
 	sp.nv_ += du_dv.getDv() * sp.n_;
@@ -196,14 +196,14 @@ std::unique_ptr<DirectionColor> DirectionColor::blend(std::unique_ptr<DirectionC
 	else if(direction_color_1)
 	{
 		std::unique_ptr<DirectionColor> direction_color_blend = std::unique_ptr<DirectionColor>(new DirectionColor());
-		direction_color_blend->col_ = math::lerp(direction_color_1->col_, {0.f}, blend_val);
+		direction_color_blend->col_ = math::lerp(direction_color_1->col_, Rgb{0.f}, blend_val);
 		direction_color_blend->dir_ = direction_color_1->dir_.normalize();
 		return direction_color_blend;
 	}
 	else if(direction_color_2)
 	{
 		std::unique_ptr<DirectionColor> direction_color_blend = std::unique_ptr<DirectionColor>(new DirectionColor());
-		direction_color_blend->col_ = math::lerp({0.f}, direction_color_2->col_, blend_val);
+		direction_color_blend->col_ = math::lerp(Rgb{0.f}, direction_color_2->col_, blend_val);
 		direction_color_blend->dir_ = direction_color_2->dir_.normalize();
 		return direction_color_blend;
 	}

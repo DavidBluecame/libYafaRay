@@ -26,10 +26,7 @@
 #include "math/interpolation.h"
 #include "format/format.h"
 #include "common/file.h"
-
-#ifdef HAVE_OPENCV
-#include <opencv2/photo/photo.hpp>
-#endif
+#include "image/image_manipulation.h"
 
 BEGIN_YAFARAY
 
@@ -73,7 +70,7 @@ Rgba ImageTexture::interpolateImage(const Point3 &p, const MipMapParams *mipmap_
 
 Rgba ImageTexture::getColor(const Point3 &p, const MipMapParams *mipmap_params) const
 {
-	Point3 p_1 = Point3(p.x_, -p.y_, p.z_);
+	Point3 p_1{p.x(), -p.y(), p.z()};
 	Rgba ret(0.f);
 	const bool outside = doMapping(p_1);
 	if(outside) return ret;
@@ -99,42 +96,42 @@ Rgba ImageTexture::getRawColor(const Point3 &p, const MipMapParams *mipmap_param
 bool ImageTexture::doMapping(Point3 &texpt) const
 {
 	bool outside = false;
-	texpt = 0.5f * texpt + 0.5f;
+	texpt = 0.5f * texpt + Vec3{0.5f}; //FIXME DAVID: does the Vec3 portion make sense?
 	// repeat, only valid for REPEAT clipmode
 	if(tex_clip_mode_ == ClipMode::Repeat)
 	{
-		if(xrepeat_ > 1) texpt.x_ *= static_cast<float>(xrepeat_);
-		if(yrepeat_ > 1) texpt.y_ *= static_cast<float>(yrepeat_);
-		if(mirror_x_ && static_cast<int>(ceilf(texpt.x_)) % 2 == 0) texpt.x_ = -texpt.x_;
-		if(mirror_y_ && static_cast<int>(ceilf(texpt.y_)) % 2 == 0) texpt.y_ = -texpt.y_;
-		if(texpt.x_ > 1.f) texpt.x_ -= static_cast<int>(texpt.x_);
-		else if(texpt.x_ < 0.f) texpt.x_ += 1 - static_cast<int>(texpt.x_);
+		if(xrepeat_ > 1) texpt.x() *= static_cast<float>(xrepeat_);
+		if(yrepeat_ > 1) texpt.y() *= static_cast<float>(yrepeat_);
+		if(mirror_x_ && static_cast<int>(ceilf(texpt.x())) % 2 == 0) texpt.x() = -texpt.x();
+		if(mirror_y_ && static_cast<int>(ceilf(texpt.y())) % 2 == 0) texpt.y() = -texpt.y();
+		if(texpt.x() > 1.f) texpt.x() -= static_cast<int>(texpt.x());
+		else if(texpt.x() < 0.f) texpt.x() += 1 - static_cast<int>(texpt.x());
 
-		if(texpt.y_ > 1.f) texpt.y_ -= static_cast<int>(texpt.y_);
-		else if(texpt.y_ < 0.f) texpt.y_ += 1 - static_cast<int>(texpt.y_);
+		if(texpt.y() > 1.f) texpt.y() -= static_cast<int>(texpt.y());
+		else if(texpt.y() < 0.f) texpt.y() += 1 - static_cast<int>(texpt.y());
 	}
 
 	// crop
-	if(cropx_) texpt.x_ = cropminx_ + texpt.x_ * (cropmaxx_ - cropminx_);
-	if(cropy_) texpt.y_ = cropminy_ + texpt.y_ * (cropmaxy_ - cropminy_);
+	if(cropx_) texpt.x() = cropminx_ + texpt.x() * (cropmaxx_ - cropminx_);
+	if(cropy_) texpt.y() = cropminy_ + texpt.y() * (cropmaxy_ - cropminy_);
 
 	// rot90
-	if(rot_90_) std::swap(texpt.x_, texpt.y_);
+	if(rot_90_) std::swap(texpt.x(), texpt.y());
 
 	// clipping
 	switch(tex_clip_mode_)
 	{
 		case ClipMode::ClipCube:
 		{
-			if((texpt.x_ < 0) || (texpt.x_ > 1) || (texpt.y_ < 0) || (texpt.y_ > 1) || (texpt.z_ < -1) || (texpt.z_ > 1))
+			if((texpt.x() < 0) || (texpt.x() > 1) || (texpt.y() < 0) || (texpt.y() > 1) || (texpt.z() < -1) || (texpt.z() > 1))
 				outside = true;
 			break;
 		}
 		case ClipMode::Checker:
 		{
-			const int xs = static_cast<int>(floor(texpt.x_)), ys = static_cast<int>(floor(texpt.y_));
-			texpt.x_ -= xs;
-			texpt.y_ -= ys;
+			const int xs = static_cast<int>(std::floor(texpt.x())), ys = static_cast<int>(std::floor(texpt.y()));
+			texpt.x() -= xs;
+			texpt.y() -= ys;
 			if(!checker_odd_ && !((xs + ys) & 1))
 			{
 				outside = true;
@@ -148,21 +145,21 @@ bool ImageTexture::doMapping(Point3 &texpt) const
 			// scale around center, (0.5, 0.5)
 			if(checker_dist_ < 1.0)
 			{
-				texpt.x_ = (texpt.x_ - 0.5f) / (1.f - checker_dist_) + 0.5f;
-				texpt.y_ = (texpt.y_ - 0.5f) / (1.f - checker_dist_) + 0.5f;
+				texpt.x() = (texpt.x() - 0.5f) / (1.f - checker_dist_) + 0.5f;
+				texpt.y() = (texpt.y() - 0.5f) / (1.f - checker_dist_) + 0.5f;
 			}
 			// continue to TCL_CLIP
 		}
 		case ClipMode::Clip:
 		{
-			if((texpt.x_ < 0) || (texpt.x_ > 1) || (texpt.y_ < 0) || (texpt.y_ > 1))
+			if((texpt.x() < 0) || (texpt.x() > 1) || (texpt.y() < 0) || (texpt.y() > 1))
 				outside = true;
 			break;
 		}
 		case ClipMode::Extend:
 		{
-			if(texpt.x_ > 0.99999f) texpt.x_ = 0.99999f; else if(texpt.x_ < 0) texpt.x_ = 0;
-			if(texpt.y_ > 0.99999f) texpt.y_ = 0.99999f; else if(texpt.y_ < 0) texpt.y_ = 0;
+			if(texpt.x() > 0.99999f) texpt.x() = 0.99999f; else if(texpt.x() < 0) texpt.x() = 0;
+			if(texpt.y() > 0.99999f) texpt.y() = 0.99999f; else if(texpt.y() < 0) texpt.y() = 0;
 			// no break, fall thru to TEX_REPEAT
 		}
 		default:
@@ -178,7 +175,7 @@ void ImageTexture::setCrop(float minx, float miny, float maxx, float maxy)
 	cropy_ = ((cropminy_ != 0.0) || (cropmaxy_ != 1.0));
 }
 
-void ImageTexture::findTextureInterpolationCoordinates(int &coord_0, int &coord_1, int &coord_2, int &coord_3, float &coord_decimal_part, float coord_float, int resolution, bool repeat, bool mirror) const
+void ImageTexture::findTextureInterpolationCoordinates(int &coord_0, int &coord_1, int &coord_2, int &coord_3, float &coord_decimal_part, float coord_float, int resolution, bool repeat, bool mirror)
 {
 	if(repeat)
 	{
@@ -234,7 +231,7 @@ void ImageTexture::findTextureInterpolationCoordinates(int &coord_0, int &coord_
 		else coord_2 = 0;
 		coord_0 = std::max(0, coord_1 - 1);
 		coord_3 = std::min(resolution - 1, coord_2 + 1);
-		coord_decimal_part = coord_float - floor(coord_float);
+		coord_decimal_part = coord_float - std::floor(coord_float);
 	}
 }
 
@@ -243,8 +240,8 @@ Rgba ImageTexture::noInterpolation(const Point3 &p, int mipmap_level) const
 	const int resx = images_.at(mipmap_level)->getWidth();
 	const int resy = images_.at(mipmap_level)->getHeight();
 
-	const float xf = (static_cast<float>(resx) * (p.x_ - floor(p.x_)));
-	const float yf = (static_cast<float>(resy) * (p.y_ - floor(p.y_)));
+	const float xf = (static_cast<float>(resx) * (p.x() - std::floor(p.x())));
+	const float yf = (static_cast<float>(resy) * (p.y() - std::floor(p.y())));
 
 	int x_0, x_1, x_2, x_3, y_0, y_1, y_2, y_3;
 	float dx, dy;
@@ -258,8 +255,8 @@ Rgba ImageTexture::bilinearInterpolation(const Point3 &p, int mipmap_level) cons
 	const int resx = images_.at(mipmap_level)->getWidth();
 	const int resy = images_.at(mipmap_level)->getHeight();
 
-	const float xf = (static_cast<float>(resx) * (p.x_ - floor(p.x_))) - 0.5f;
-	const float yf = (static_cast<float>(resy) * (p.y_ - floor(p.y_))) - 0.5f;
+	const float xf = (static_cast<float>(resx) * (p.x() - std::floor(p.x()))) - 0.5f;
+	const float yf = (static_cast<float>(resy) * (p.y() - std::floor(p.y()))) - 0.5f;
 
 	int x_0, x_1, x_2, x_3, y_0, y_1, y_2, y_3;
 	float dx, dy;
@@ -284,8 +281,8 @@ Rgba ImageTexture::bicubicInterpolation(const Point3 &p, int mipmap_level) const
 	const int resx = images_.at(mipmap_level)->getWidth();
 	const int resy = images_.at(mipmap_level)->getHeight();
 
-	const float xf = (static_cast<float>(resx) * (p.x_ - floor(p.x_))) - 0.5f;
-	const float yf = (static_cast<float>(resy) * (p.y_ - floor(p.y_))) - 0.5f;
+	const float xf = (static_cast<float>(resx) * (p.x() - std::floor(p.x()))) - 0.5f;
+	const float yf = (static_cast<float>(resy) * (p.y() - std::floor(p.y()))) - 0.5f;
 
 	int x_0, x_1, x_2, x_3, y_0, y_1, y_2, y_3;
 	float dx, dy;
@@ -332,8 +329,8 @@ Rgba ImageTexture::mipMapsTrilinearInterpolation(const Point3 &p, const MipMapPa
 
 	mipmap_level = std::min(std::max(0.f, mipmap_level), static_cast<float>(images_.size() - 1));
 
-	const int mipmap_level_a = static_cast<int>(floor(mipmap_level));
-	const int mipmap_level_b = static_cast<int>(ceil(mipmap_level));
+	const int mipmap_level_a = static_cast<int>(std::floor(mipmap_level));
+	const int mipmap_level_b = static_cast<int>(std::ceil(mipmap_level));
 	const float mipmap_level_delta = mipmap_level - static_cast<float>(mipmap_level_a);
 
 	Rgba col = bilinearInterpolation(p, mipmap_level_a);
@@ -374,8 +371,8 @@ Rgba ImageTexture::mipMapsEwaInterpolation(const Point3 &p, float max_anisotropy
 	float mipmap_level = static_cast<float>(images_.size() - 1) - 1.f + math::log2(minor_length);
 	mipmap_level = std::min(std::max(0.f, mipmap_level), static_cast<float>(images_.size() - 1));
 
-	const int mipmap_level_a = static_cast<int>(floor(mipmap_level));
-	const int mipmap_level_b = static_cast<int>(ceil(mipmap_level));
+	const int mipmap_level_a = static_cast<int>(std::floor(mipmap_level));
+	const int mipmap_level_b = static_cast<int>(std::ceil(mipmap_level));
 	const float mipmap_level_delta = mipmap_level - static_cast<float>(mipmap_level_a);
 
 	Rgba col = ewaEllipticCalculation(p, ds_0, dt_0, ds_1, dt_1, mipmap_level_a);
@@ -392,14 +389,14 @@ Rgba ImageTexture::ewaEllipticCalculation(const Point3 &p, float ds_0, float dt_
 	{
 		const int resx = images_.at(0)->getWidth();
 		const int resy = images_.at(0)->getHeight();
-		return images_.at(images_.size() - 1)->getColor(math::mod(static_cast<int>(p.x_), resx), math::mod(static_cast<int>(p.y_), resy));
+		return images_.at(images_.size() - 1)->getColor(math::mod(static_cast<int>(p.x()), resx), math::mod(static_cast<int>(p.y()), resy));
 	}
 
 	const int resx = images_.at(mipmap_level)->getWidth();
 	const int resy = images_.at(mipmap_level)->getHeight();
 
-	const float xf = (static_cast<float>(resx) * (p.x_ - floor(p.x_))) - 0.5f;
-	const float yf = (static_cast<float>(resy) * (p.y_ - floor(p.y_))) - 0.5f;
+	const float xf = (static_cast<float>(resx) * (p.x() - std::floor(p.x()))) - 0.5f;
+	const float yf = (static_cast<float>(resy) * (p.y() - std::floor(p.y()))) - 0.5f;
 
 	ds_0 *= resx;
 	ds_1 *= resx;
@@ -462,64 +459,7 @@ EwaWeightLut::EwaWeightLut()
 
 void ImageTexture::generateMipMaps()
 {
-	if(images_.empty()) return;
-
-#ifdef HAVE_OPENCV
-	int img_index = 0;
-	//bool blur_seamless = true;
-	int w = images_.at(0)->getWidth();
-	int h = images_.at(0)->getHeight();
-
-	if(logger_.isVerbose()) logger_.logVerbose("Format: generating mipmaps for texture of resolution [", w, " x ", h, "]");
-
-	const cv::Mat a(h, w, CV_32FC4);
-	cv::Mat_<cv::Vec4f> a_vec = a;
-
-	for(int j = 0; j < h; ++j)
-	{
-		for(int i = 0; i < w; ++i)
-		{
-			Rgba color = images_[img_index]->getColor(i, j);
-			a_vec(j, i)[0] = color.getR();
-			a_vec(j, i)[1] = color.getG();
-			a_vec(j, i)[2] = color.getB();
-			a_vec(j, i)[3] = color.getA();
-		}
-	}
-
-	//Mipmap generation using the temporary full float buffer to reduce information loss
-	while(w > 1 || h > 1)
-	{
-		const int w_2 = (w + 1) / 2;
-		const int h_2 = (h + 1) / 2;
-		++img_index;
-		images_.emplace_back(Image::factory(logger_, w_2, h_2, images_[img_index - 1]->getType(), images_[img_index - 1]->getOptimization()));
-
-		const cv::Mat b(h_2, w_2, CV_32FC4);
-		const cv::Mat_<cv::Vec4f> b_vec = b;
-		cv::resize(a, b, cv::Size(w_2, h_2), 0, 0, cv::INTER_AREA);
-
-		for(int j = 0; j < h_2; ++j)
-		{
-			for(int i = 0; i < w_2; ++i)
-			{
-				Rgba tmp_col(0.f);
-				tmp_col.r_ = b_vec(j, i)[0];
-				tmp_col.g_ = b_vec(j, i)[1];
-				tmp_col.b_ = b_vec(j, i)[2];
-				tmp_col.a_ = b_vec(j, i)[3];
-				images_[img_index]->setColor(i, j, tmp_col);
-			}
-		}
-		w = w_2;
-		h = h_2;
-		if(logger_.isDebug())logger_.logDebug("Format: generated mipmap ", img_index, " [", w_2, " x ", h_2, "]");
-	}
-
-	if(logger_.isVerbose()) logger_.logVerbose("Format: mipmap generation done: ", img_index, " mipmaps generated.");
-#else
-	logger_.logWarning("Format: cannot generate mipmaps, YafaRay was not built with OpenCV support which is needed for mipmap processing.");
-#endif
+	image_manipulation::generateMipMaps(logger_, images_);
 }
 
 ImageTexture::ClipMode ImageTexture::string2Cliptype(const std::string &clipname)
@@ -534,15 +474,13 @@ ImageTexture::ClipMode ImageTexture::string2Cliptype(const std::string &clipname
 	return tex_clipmode;
 }
 
-std::unique_ptr<Texture> ImageTexture::factory(Logger &logger, ParamMap &params, Scene &scene)
+Texture * ImageTexture::factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params)
 {
-	std::string name;
 	std::string image_name;
 	std::string interpolation_type_str;
 	double gamma = 1.0;
 	double expadj = 0.0;
 	bool normalmap = false;
-	params.getParam("name", name);
 	params.getParam("interpolate", interpolation_type_str);
 	params.getParam("gamma", gamma);
 	params.getParam("exposure_adjust", expadj);
@@ -564,7 +502,7 @@ std::unique_ptr<Texture> ImageTexture::factory(Logger &logger, ParamMap &params,
 		return nullptr;
 	}
 
-	auto tex = std::unique_ptr<ImageTexture>(new ImageTexture(logger, image));
+	auto tex = new ImageTexture(logger, image);
 	if(!tex) //FIXME: this will never be true, replace by exception handling??
 	{
 		logger.logError("ImageTexture: Couldn't create image texture.");

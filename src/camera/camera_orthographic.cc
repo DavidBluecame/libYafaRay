@@ -60,28 +60,20 @@ CameraRay OrthographicCamera::shootRay(float px, float py, float lu, float lv) c
 
 Point3 OrthographicCamera::screenproject(const Point3 &p) const
 {
-	Point3 s;
-	Vec3 dir = p - pos_;
+	const Vec3 dir{p - pos_};
 	// Project p to pixel plane
-
-	float dz = cam_z_ * dir;
-
-	Vec3 proj = dir - dz * cam_z_;
-
-	s.x_ = 2 * (proj * cam_x_ / scale_) - 1.0f;
-	s.y_ = - 2 * proj * cam_y_ / (aspect_ratio_ * scale_) + 1.0f;
-	s.z_ = 0;
-
-	return s;
+	const float dz = cam_z_ * dir;
+	const Vec3 proj{dir - dz * cam_z_};
+	return { 2.f * (proj * cam_x_ / scale_) - 1.f, -2.f * proj * cam_y_ / (aspect_ratio_ * scale_) + 1.f, 0.f};
 }
 
-std::unique_ptr<Camera> OrthographicCamera::factory(Logger &logger, ParamMap &params, const Scene &scene)
+const Camera * OrthographicCamera::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	Point3 from(0, 1, 0), to(0, 0, 0), up(0, 1, 1);
 	int resx = 320, resy = 200;
 	double aspect = 1.0, scale = 1.0;
 	float near_clip = 0.0f, far_clip = -1.0f;
-	std::string view_name = "";
+	std::string view_name;
 
 	params.getParam("from", from);
 	params.getParam("to", to);
@@ -94,7 +86,7 @@ std::unique_ptr<Camera> OrthographicCamera::factory(Logger &logger, ParamMap &pa
 	params.getParam("farClip", far_clip);
 	params.getParam("view_name", view_name);
 
-	return std::unique_ptr<Camera>(new OrthographicCamera(logger, from, to, up, resx, resy, aspect, scale, near_clip, far_clip));
+	return new OrthographicCamera(logger, from, to, up, resx, resy, aspect, scale, near_clip, far_clip);
 }
 
 END_YAFARAY

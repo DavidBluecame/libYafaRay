@@ -45,14 +45,14 @@ class Parameter
 		std::string printType() const;
 
 		Parameter() = default;
-		Parameter(const std::string &s);
-		Parameter(int i);
-		Parameter(bool b);
-		Parameter(float f);
-		Parameter(double f);
-		Parameter(const Vec3 &p);
-		Parameter(const Rgba &c);
-		Parameter(const Matrix4 &m);
+		explicit Parameter(const std::string &s);
+		explicit Parameter(int i);
+		explicit Parameter(bool b);
+		explicit Parameter(float f);
+		explicit Parameter(double f);
+		explicit Parameter(const Vec3 &p);
+		explicit Parameter(const Rgba &c);
+		explicit Parameter(const Matrix4 &m);
 
 		// return parameter value in reference parameter, return true if
 		// the parameter type matches, false otherwise.
@@ -72,6 +72,7 @@ class Parameter
 		Parameter &operator = (bool b);
 		Parameter &operator = (float f);
 		Parameter &operator = (const Vec3 &p);
+		Parameter &operator = (const Rgb &c);
 		Parameter &operator = (const Rgba &c);
 		Parameter &operator = (const Matrix4 &m);
 

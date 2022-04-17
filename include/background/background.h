@@ -21,6 +21,7 @@
 #define YAFARAY_BACKGROUND_H
 
 #include "common/yafaray_common.h"
+#include "color/color.h"
 #include <memory>
 
 BEGIN_YAFARAY
@@ -35,22 +36,15 @@ class Vec3;
 class Background
 {
 	public:
-		static std::unique_ptr<Background> factory(Logger &logger, ParamMap &params, Scene &scene);
-		Background(Logger &logger) : logger_(logger) { }
+		static const Background * factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
+		explicit Background(Logger &logger) : logger_(logger) { }
 		virtual ~Background() = default;
-		//! get the background color for a given ray
-		virtual Rgb operator()(const Vec3 &dir, bool from_postprocessed = false) const = 0;
-		virtual Rgb eval(const Vec3 &dir, bool from_postprocessed = false) const = 0;
-		/*! get the light source representing background lighting.
-			\return the light source that reproduces background lighting, or nullptr if background
-					shall only be sampled from BSDFs
-		*/
-		bool hasIbl() const { return with_ibl_; }
-		bool shootsCaustic() const { return shoot_caustic_; }
+		Rgb operator()(const Vec3 &dir) const { return operator()(dir, false); }
+		virtual Rgb operator()(const Vec3 &dir, bool use_ibl_blur) const { return eval(dir, use_ibl_blur); }
+		Rgb eval(const Vec3 &dir) const { return eval(dir, false); }
+		virtual Rgb eval(const Vec3 &dir, bool use_ibl_blur) const = 0;
 
 	protected:
-		bool with_ibl_ = false;
-		bool shoot_caustic_ = false;
 		Logger &logger_;
 };
 

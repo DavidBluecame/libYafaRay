@@ -19,6 +19,8 @@
  */
 
 #include "material/material_glass.h"
+
+#include <cmath>
 #include "shader/shader_node.h"
 #include "geometry/surface.h"
 #include "common/logger.h"
@@ -47,9 +49,9 @@ GlassMaterial::GlassMaterial(Logger &logger, float ior, Rgb filt_c, const Rgb &s
 	visibility_ = e_visibility;
 }
 
-std::unique_ptr<const MaterialData> GlassMaterial::initBsdf(SurfacePoint &sp, const Camera *camera) const
+const MaterialData * GlassMaterial::initBsdf(SurfacePoint &sp, const Camera *camera) const
 {
-	std::unique_ptr<MaterialData> mat_data = createMaterialData(color_nodes_.size() + bump_nodes_.size());
+	auto mat_data = createMaterialData(color_nodes_.size() + bump_nodes_.size());
 	if(bump_shader_) evalBump(mat_data->node_tree_data_, sp, bump_shader_, camera);
 	for(const auto &node : color_nodes_) node->eval(mat_data->node_tree_data_, sp, camera);
 	return mat_data;
@@ -117,7 +119,7 @@ Rgb GlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint &sp, 
 			wi.reflect(n);
 			s.sampled_flags_ = BsdfFlags::Specular | BsdfFlags::Reflect;
 			w = 1.f;
-			Rgb scolor = 1.f; //Rgb(1.f/std::abs(sp.N*wi));
+			Rgb scolor{1.f}; //Rgb(1.f/std::abs(sp.N*wi));
 			applyWireFrame(scolor, wireframe_shader_, mat_data->node_tree_data_, sp);
 			return scolor;
 		}
@@ -180,21 +182,21 @@ Rgb GlassMaterial::sample(const MaterialData *mat_data, const SurfacePoint &sp, 
 			if(s.reverse_)
 			{
 				s.pdf_back_ = s.pdf_;
-				s.col_back_ = 1.f;//tir_col;
+				s.col_back_ = Rgb{1.f};//tir_col;
 			}
 			w = 1.f;
-			Rgb scolor = 1.f;//tir_col;
+			Rgb scolor{1.f};//tir_col;
 			applyWireFrame(scolor, wireframe_shader_, mat_data->node_tree_data_, sp);
 			return scolor;
 		}
 	}
 	s.pdf_ = 0.f;
-	return Rgb(0.f);
+	return Rgb{0.f};
 }
 
 Rgb GlassMaterial::getTransparency(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo, const Camera *camera) const
 {
-	const Vec3 n = SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo);
+	const Vec3 n{SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo)};
 	float kr, kt;
 	Vec3::fresnel(wo, n, getShaderScalar(ior_shader_, mat_data->node_tree_data_, ior_), kr, kt);
 	Rgb result = kt * getShaderColor(filter_color_shader_, mat_data->node_tree_data_, filter_color_);
@@ -284,13 +286,12 @@ float GlassMaterial::getMatIor() const
 	return ior_;
 }
 
-std::unique_ptr<Material> GlassMaterial::factory(Logger &logger, ParamMap &params, std::list<ParamMap> &nodes_params, const Scene &scene)
+const Material *GlassMaterial::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params)
 {
 	double ior = 1.4;
 	double filt = 0.f;
 	double disp_power = 0.0;
 	Rgb filt_col(1.f), absorp(1.f), sr_col(1.f);
-	std::string name;
 	bool fake_shad = false;
 	std::string s_visibility = "normal";
 	int mat_pass_index = 0;
@@ -322,7 +323,7 @@ std::unique_ptr<Material> GlassMaterial::factory(Logger &logger, ParamMap &param
 
 	const Visibility visibility = visibility::fromString(s_visibility);
 
-	auto mat = std::unique_ptr<GlassMaterial>(new GlassMaterial(logger, ior, filt * filt_col + Rgb(1.f - filt), sr_col, disp_power, fake_shad, visibility));
+	auto mat = new GlassMaterial(logger, ior, filt * filt_col + Rgb(1.f - filt), sr_col, disp_power, fake_shad, visibility);
 
 	mat->setMaterialIndex(mat_pass_index);
 	mat->receive_shadows_ = receive_shadows;
@@ -345,24 +346,21 @@ std::unique_ptr<Material> GlassMaterial::factory(Logger &logger, ParamMap &param
 			if(params.getParam("absorption_dist", dist))
 			{
 				const float maxlog = log(1e38);
-				sigma.r_ = (absorp.r_ > 1e-38) ? -log(absorp.r_) : maxlog;
-				sigma.g_ = (absorp.g_ > 1e-38) ? -log(absorp.g_) : maxlog;
-				sigma.b_ = (absorp.b_ > 1e-38) ? -log(absorp.b_) : maxlog;
+				sigma.r_ = (absorp.r_ > 1e-38) ? -std::log(absorp.r_) : maxlog;
+				sigma.g_ = (absorp.g_ > 1e-38) ? -std::log(absorp.g_) : maxlog;
+				sigma.b_ = (absorp.b_ > 1e-38) ? -std::log(absorp.b_) : maxlog;
 				if(dist != 0.f) sigma *= 1.f / dist;
 			}
 			mat->absorb_ = true;
 			mat->beer_sigma_a_ = sigma;
 			mat->bsdf_flags_ |= BsdfFlags::Volumetric;
 			// creat volume handler (backwards compatibility)
-			if(params.getParam("name", name))
-			{
-				ParamMap map;
-				map["type"] = std::string("beer");
-				map["absorption_col"] = absorp;
-				map["absorption_dist"] = Parameter(dist);
-				mat->vol_i_ = VolumeHandler::factory(logger, map, scene);
-				mat->bsdf_flags_ |= BsdfFlags::Volumetric;
-			}
+			ParamMap map;
+			map["type"] = std::string("beer");
+			map["absorption_col"] = absorp;
+			map["absorption_dist"] = Parameter(dist);
+			mat->vol_i_ = std::unique_ptr<VolumeHandler>(VolumeHandler::factory(logger, scene, name, map));
+			mat->bsdf_flags_ |= BsdfFlags::Volumetric;
 		}
 	}
 
@@ -447,18 +445,18 @@ Specular MirrorMaterial::getSpecular(int ray_level, const MaterialData *mat_data
 	Specular specular;
 	specular.reflect_ = std::unique_ptr<DirectionColor>(new DirectionColor());
 	specular.reflect_->col_ = ref_col_;
-	const Vec3 n = SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo);
+	const Vec3 n{SurfacePoint::normalFaceForward(sp.ng_, sp.n_, wo)};
 	specular.reflect_->dir_ = Vec3::reflectDir(n, wo);
 	return specular;
 }
 
-std::unique_ptr<Material> MirrorMaterial::factory(Logger &logger, ParamMap &params, std::list<ParamMap> &param_list, const Scene &scene)
+const Material *MirrorMaterial::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params)
 {
 	Rgb col(1.0);
 	float refl = 1.0;
 	params.getParam("color", col);
 	params.getParam("reflect", refl);
-	return std::unique_ptr<Material>(new MirrorMaterial(logger, col, refl));
+	return new MirrorMaterial(logger, col, refl);
 }
 
 
@@ -466,12 +464,12 @@ Rgb NullMaterial::sample(const MaterialData *mat_data, const SurfacePoint &sp, c
 {
 	s.pdf_ = 0.f;
 	w = 0.f;
-	return Rgb(0.f);
+	return Rgb{0.f};
 }
 
-std::unique_ptr<Material> NullMaterial::factory(Logger &logger, ParamMap &, std::list<ParamMap> &, const Scene &)
+const Material *NullMaterial::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params)
 {
-	return std::unique_ptr<Material>(new NullMaterial(logger));
+	return new NullMaterial(logger);
 }
 
 END_YAFARAY

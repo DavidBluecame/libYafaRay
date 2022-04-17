@@ -31,12 +31,11 @@ BEGIN_YAFARAY
 class ConstantBackground final : public Background
 {
 	public:
-		static std::unique_ptr<Background> factory(Logger &logger, ParamMap &params, Scene &scene);
+		static const Background * factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
-		ConstantBackground(Logger &logger, Rgb col, bool ibl, bool with_caustic);
-		virtual Rgb operator()(const Vec3 &dir, bool use_ibl_blur = false) const override;
-		virtual Rgb eval(const Vec3 &dir, bool use_ibl_blur = false) const override;
+		ConstantBackground(Logger &logger, Rgb col);
+		Rgb eval(const Vec3 &dir, bool use_ibl_blur) const override;
 
 		Rgb color_;
 };

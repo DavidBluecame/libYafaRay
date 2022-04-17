@@ -19,6 +19,8 @@
  */
 
 #include "geometry/primitive/primitive_sphere.h"
+
+#include <cmath>
 #include "geometry/object/object_basic.h"
 #include "common/param.h"
 #include "geometry/bound.h"
@@ -28,7 +30,7 @@
 
 BEGIN_YAFARAY
 
-Primitive *SpherePrimitive::factory(ParamMap &params, const Scene &scene, const Object &object)
+Primitive *SpherePrimitive::factory(const ParamMap &params, const Scene &scene, const Object &object)
 {
 /*	if(logger_.isDebug())
 	{
@@ -37,26 +39,26 @@ Primitive *SpherePrimitive::factory(ParamMap &params, const Scene &scene, const 
 	}*/
 	Point3 center(0.f, 0.f, 0.f);
 	double radius(1.f);
-	const Material *mat;
+	const std::unique_ptr<const Material> *material;
 	std::string matname;
 	params.getParam("center", center);
 	params.getParam("radius", radius);
 	params.getParam("material", matname);
 	if(matname.empty()) return nullptr;
-	mat = scene.getMaterial(matname);
-	if(!mat) return nullptr;
-	return new SpherePrimitive(center, radius, mat, object);
+	material = scene.getMaterial(matname);
+	if(!material) return nullptr;
+	return new SpherePrimitive(center, radius, material, object);
 }
 
 Bound SpherePrimitive::getBound(const Matrix4 *obj_to_world) const
 {
-	const Vec3 r(radius_ * 1.0001);
-	return Bound(center_ - r, center_ + r);
+	const Vec3 r{radius_ * 1.0001f};
+	return {center_ - r, center_ + r};
 }
 
 IntersectData SpherePrimitive::intersect(const Ray &ray, const Matrix4 *obj_to_world) const
 {
-	const Vec3 vf = ray.from_ - center_;
+	const Vec3 vf{ray.from_ - center_};
 	const float ea = ray.dir_ * ray.dir_;
 	const float eb = 2.0 * (vf * ray.dir_);
 	const float ec = vf * vf - radius_ * radius_;
@@ -82,22 +84,22 @@ std::unique_ptr<const SurfacePoint> SpherePrimitive::getSurface(const RayDiffere
 {
 	auto sp = std::unique_ptr<SurfacePoint>(new SurfacePoint);
 	sp->intersect_data_ = intersect_data;
-	Vec3 normal = hit - center_;
-	sp->orco_p_ = normal;
+	Vec3 normal{hit - center_};
+	sp->orco_p_ = static_cast<Point3>(normal);
 	normal.normalize();
-	sp->material_ = material_;
+	sp->material_ = material_->get();
 	sp->object_ = &base_object_;
 	sp->n_ = normal;
 	sp->ng_ = normal;
 	//sp->origin = (void*)this;
 	sp->has_orco_ = true;
 	sp->p_ = hit;
-	Vec3::createCs(sp->n_, sp->nu_, sp->nv_);
-	sp->u_ = atan2(normal.y_, normal.x_) * math::div_1_by_pi + 1;
-	sp->v_ = 1.f - math::acos(normal.z_) * math::div_1_by_pi;
+	std::tie(sp->nu_, sp->nv_) = Vec3::createCoordsSystem(sp->n_);
+	sp->u_ = std::atan2(normal.y(), normal.x()) * math::div_1_by_pi + 1;
+	sp->v_ = 1.f - math::acos(normal.z()) * math::div_1_by_pi;
 	sp->light_ = nullptr;
 	sp->setRayDifferentials(ray_differentials);
-	sp->mat_data_ = sp->material_->initBsdf(*sp, camera);
+	sp->mat_data_ = std::shared_ptr<const MaterialData>(sp->material_->initBsdf(*sp, camera));
 	return sp;
 }
 
@@ -108,12 +110,12 @@ float SpherePrimitive::surfaceArea(const Matrix4 *obj_to_world) const
 
 Vec3 SpherePrimitive::getGeometricNormal(const Matrix4 *obj_to_world, float u, float v) const
 {
-	return Vec3(); //FIXME
+	return {}; //FIXME
 }
 
-void SpherePrimitive::sample(float s_1, float s_2, Point3 &p, Vec3 &n, const Matrix4 *obj_to_world) const
+std::pair<Point3, Vec3> SpherePrimitive::sample(float s_1, float s_2, const Matrix4 *obj_to_world) const
 {
-	//FIXME
+	return {}; //FIXME
 }
 
 END_YAFARAY

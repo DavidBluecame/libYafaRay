@@ -32,21 +32,21 @@ class TrianglePrimitive final : public FacePrimitive
 		TrianglePrimitive(const std::vector<int> &vertices_indices, const std::vector<int> &vertices_uv_indices, const MeshObject &mesh_object);
 
 	private:
-		virtual IntersectData intersect(const Ray &ray, const Matrix4 *obj_to_world) const override;
-		virtual bool intersectsBound(const ExBound &eb, const Matrix4 *obj_to_world) const override;
-		virtual bool clippingSupport() const override { return true; }
+		IntersectData intersect(const Ray &ray, const Matrix4 *obj_to_world) const override;
+		bool intersectsBound(const ExBound &eb, const Matrix4 *obj_to_world) const override;
+		bool clippingSupport() const override { return true; }
 		// return: false:=doesn't overlap bound; true:=valid clip exists
-		virtual PolyDouble::ClipResultWithBound clipToBound(Logger &logger, const std::array<Vec3Double, 2> &bound, const ClipPlane &clip_plane, const PolyDouble &poly, const Matrix4 *obj_to_world) const override;
-		virtual std::unique_ptr<const SurfacePoint> getSurface(const RayDifferentials *ray_differentials, const Point3 &hit_point, const IntersectData &intersect_data, const Matrix4 *obj_to_world, const Camera *camera) const override;
-		virtual float surfaceArea(const Matrix4 *obj_to_world) const override;
-		virtual void sample(float s_1, float s_2, Point3 &p, Vec3 &n, const Matrix4 *obj_to_world) const override;
-		virtual void calculateGeometricNormal() override;
-		void calculateShadingSpace(SurfacePoint &sp) const;
+		PolyDouble::ClipResultWithBound clipToBound(Logger &logger, const std::array<Vec3Double, 2> &bound, const ClipPlane &clip_plane, const PolyDouble &poly, const Matrix4 *obj_to_world) const override;
+		std::unique_ptr<const SurfacePoint> getSurface(const RayDifferentials *ray_differentials, const Point3 &hit_point, const IntersectData &intersect_data, const Matrix4 *obj_to_world, const Camera *camera) const override;
+		float surfaceArea(const Matrix4 *obj_to_world) const override;
+		std::pair<Point3, Vec3> sample(float s_1, float s_2, const Matrix4 *obj_to_world) const override;
+		void calculateGeometricNormal() override;
+		static void calculateShadingSpace(SurfacePoint &sp);
 		static IntersectData intersect(const Ray &ray, const std::array<Point3, 3> &vertices);
 		static bool intersectsBound(const ExBound &ex_bound, const std::array<Point3, 3> &vertices);
 		static Vec3 calculateNormal(const std::array<Point3, 3> &vertices);
 		static float surfaceArea(const std::array<Point3, 3> &vertices);
-		static void sample(float s_1, float s_2, Point3 &p, const std::array<Point3, 3> &vertices);
+		static Point3 sample(float s_1, float s_2, const std::array<Point3, 3> &vertices);
 		//! triBoxOverlap and related functions are based on "AABB-triangle overlap test code" by Tomas Akenine-Möller
 		static bool triBoxOverlap(const Vec3Double &boxcenter, const Vec3Double &boxhalfsize, const std::array<Vec3Double, 3> &triverts);
 };

@@ -68,8 +68,8 @@ bool AreaLight::illumSample(const SurfacePoint &sp, LSample &s, Ray &wi) const
 	if(photonOnly()) return false;
 
 	//get point on area light and vector to surface point:
-	Point3 p = corner_ + s.s_1_ * to_x_ + s.s_2_ * to_y_;
-	Vec3 ldir = p - sp.p_;
+	Point3 p{corner_ + s.s_1_ * to_x_ + s.s_2_ * to_y_};
+	Vec3 ldir{p - sp.p_};
 	//normalize vec and compute inverse square distance
 	float dist_sqr = ldir.lengthSqr();
 	float dist = math::sqrt(dist_sqr);
@@ -116,22 +116,19 @@ Rgb AreaLight::emitSample(Vec3 &wo, LSample &s) const
 
 bool AreaLight::triIntersect(const Point3 &a, const Point3 &b, const Point3 &c, const Ray &ray, float &t)
 {
-	Vec3 edge_1, edge_2, tvec, pvec, qvec;
-	float det, inv_det, u, v;
-	edge_1 = b - a;
-	edge_2 = c - a;
-	pvec = ray.dir_ ^ edge_2;
-	det = edge_1 * pvec;
-	if(det == 0.0) return false;
-	inv_det = 1.0 / det;
-	tvec = ray.from_ - a;
-	u = (tvec * pvec) * inv_det;
-	if(u < 0.0 || u > 1.0) return false;
-	qvec = tvec ^ edge_1;
-	v = (ray.dir_ * qvec) * inv_det;
-	if((v < 0.0) || ((u + v) > 1.0)) return false;
+	const Vec3 edge_1{b - a};
+	const Vec3 edge_2{c - a};
+	const Vec3 pvec{ray.dir_ ^ edge_2};
+	const float det = edge_1 * pvec;
+	if(det == 0.f) return false;
+	const float inv_det = 1.f / det;
+	const Vec3 tvec{ray.from_ - a};
+	const float u = (tvec * pvec) * inv_det;
+	if(u < 0.f || u > 1.f) return false;
+	const Vec3 qvec{tvec ^ edge_1};
+	const float v = (ray.dir_ * qvec) * inv_det;
+	if((v < 0.f) || ((u + v) > 1.f)) return false;
 	t = edge_2 * qvec * inv_det;
-
 	return true;
 }
 
@@ -155,7 +152,7 @@ bool AreaLight::intersect(const Ray &ray, float &t, Rgb &col, float &ipdf) const
 
 float AreaLight::illumPdf(const SurfacePoint &sp, const SurfacePoint &sp_light) const
 {
-	Vec3 wi = sp_light.p_ - sp.p_;
+	Vec3 wi{sp_light.p_ - sp.p_};
 	float r_2 = wi.normLenSqr();
 	float cos_n = wi * fnormal_;
 	return cos_n > 0 ? r_2 * math::num_pi / (area_ * cos_n) : 0.f;
@@ -168,11 +165,11 @@ void AreaLight::emitPdf(const SurfacePoint &sp, const Vec3 &wo, float &area_pdf,
 	dir_pdf = cos_wo > 0 ? cos_wo : 0.f;
 }
 
-std::unique_ptr<Light> AreaLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * AreaLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Point3 corner(0.0);
-	Point3 p_1(0.0);
-	Point3 p_2(0.0);
+	Point3 corner{0.f, 0.f, 0.f};
+	Point3 p_1{0.f, 0.f, 0.f};
+	Point3 p_2{0.f, 0.f, 0.f};
 	Rgb color(1.0);
 	float power = 1.0;
 	int samples = 4;
@@ -196,7 +193,7 @@ std::unique_ptr<Light> AreaLight::factory(Logger &logger, ParamMap &params, cons
 	params.getParam("with_diffuse", shoot_d);
 	params.getParam("photon_only", p_only);
 
-	auto light = std::unique_ptr<AreaLight>(new AreaLight(logger, corner, p_1 - corner, p_2 - corner, color, power, samples, light_enabled, cast_shadows));
+	auto light = new AreaLight(logger, corner, p_1 - corner, p_2 - corner, color, power, samples, light_enabled, cast_shadows);
 
 	light->object_name_ = object_name;
 	light->shoot_caustic_ = shoot_c;

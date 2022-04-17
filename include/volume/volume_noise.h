@@ -32,7 +32,7 @@ class Texture;
 class NoiseVolumeRegion final : public DensityVolumeRegion
 {
 	public:
-		static std::unique_ptr<VolumeRegion> factory(Logger &logger, const ParamMap &params, const Scene &scene);
+		static VolumeRegion *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
 		NoiseVolumeRegion(Logger &logger, Rgb sa, Rgb ss, Rgb le, float gg, float cov, float sharp, float dens,
@@ -44,7 +44,7 @@ class NoiseVolumeRegion final : public DensityVolumeRegion
 			sharpness_ = sharp * sharp;
 			density_ = dens;
 		}
-		virtual float density(Point3 p) const override;
+		float density(const Point3 &p) const override;
 
 		Texture *tex_dist_noise_;
 		float cover_;

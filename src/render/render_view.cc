@@ -27,23 +27,21 @@
 
 BEGIN_YAFARAY
 
-std::unique_ptr<RenderView> RenderView::factory(Logger &logger, ParamMap &params, const Scene &scene)
+RenderView * RenderView::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
 	if(logger.isDebug())
 	{
 		logger.logDebug("**RenderView");
 		params.logContents(logger);
 	}
-	std::string name;
 	std::string camera_name;
 	std::string light_names; //Separated by semicolon ";"
 	float wavelength = 0.f;
-	params.getParam("name", name);
 	params.getParam("camera_name", camera_name);
 	params.getParam("light_names", light_names);
 	params.getParam("wavelength", wavelength);
 
-	return std::unique_ptr<RenderView>(new RenderView(name, camera_name, light_names, wavelength));
+	return new RenderView(name, camera_name, light_names, wavelength);
 }
 
 bool RenderView::init(Logger &logger, const Scene &scene)
@@ -77,8 +75,7 @@ bool RenderView::init(Logger &logger, const Scene &scene)
 	}
 	if(lights_.empty())
 	{
-		logger.logError("RenderView '", name_, "': Lights not found in the scene.");
-		return false;
+		logger.logWarning("RenderView '", name_, "': Lights not found in the scene.");
 	}
 	return true;
 }

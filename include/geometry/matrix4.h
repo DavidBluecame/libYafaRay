@@ -33,10 +33,10 @@ class Matrix4
 {
 	public:
 		Matrix4() = default;
-		Matrix4(const float init);
+		explicit Matrix4(float init);
 		Matrix4(const Matrix4 &source);
 		Matrix4(float m_00, float m_01, float m_02, float m_03, float m_10, float m_11, float m_12, float m_13, float m_20, float m_21, float m_22, float m_23, float m_30, float m_31, float m_32, float m_33);
-		Matrix4(const float source[4][4]);
+		explicit Matrix4(const float source[4][4]);
 		/*! attention, this function can cause the matrix to become invalid!
 			unless you are sure the matrix is invertible, check invalid() afterwards! */
 		Matrix4 &inverse();
@@ -77,16 +77,16 @@ inline Matrix4 operator * (const Matrix4 &a, const Matrix4 &b)
 
 inline Vec3 operator * (const Matrix4 &a, const Vec3 &b)
 {
-	return { a[0][0] * b.x_ + a[0][1] * b.y_ + a[0][2] * b.z_,
-	                  a[1][0] * b.x_ + a[1][1] * b.y_ + a[1][2] * b.z_,
-	                  a[2][0] * b.x_ + a[2][1] * b.y_ + a[2][2] * b.z_ };
+	return { a[0][0] * b.x() + a[0][1] * b.y() + a[0][2] * b.z(),
+	                  a[1][0] * b.x() + a[1][1] * b.y() + a[1][2] * b.z(),
+	                  a[2][0] * b.x() + a[2][1] * b.y() + a[2][2] * b.z() };
 }
 
 inline Point3 operator * (const Matrix4 &a, const Point3 &b)
 {
-	return {a[0][0] * b.x_ + a[0][1] * b.y_ + a[0][2] * b.z_ + a[0][3],
-	                  a[1][0] * b.x_ + a[1][1] * b.y_ + a[1][2] * b.z_ + a[1][3],
-	                  a[2][0] * b.x_ + a[2][1] * b.y_ + a[2][2] * b.z_ + a[2][3] };
+	return {a[0][0] * b.x() + a[0][1] * b.y() + a[0][2] * b.z() + a[0][3],
+	                  a[1][0] * b.x() + a[1][1] * b.y() + a[1][2] * b.z() + a[1][3],
+	                  a[2][0] * b.x() + a[2][1] * b.y() + a[2][2] * b.z() + a[2][3] };
 }
 
 //matrix4x4_t rayToZ(const point3d_t &from,const vector3d_t & ray);

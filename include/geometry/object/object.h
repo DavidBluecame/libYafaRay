@@ -38,12 +38,12 @@ class ParamMap;
 class Scene;
 class Matrix4;
 class Material;
-class Uv;
+struct Uv;
 
 class Object
 {
 	public:
-		static std::unique_ptr<Object> factory(Logger &logger, ParamMap &params, const Scene &scene);
+		static Object *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
 		virtual ~Object() = default;
 		virtual std::string getName() const = 0;
 		virtual void setName(const std::string &name) = 0;
@@ -74,14 +74,15 @@ class Object
 		virtual const Light *getLight() const = 0;
 		/*! set a light source to be associated with this object */
 		virtual void setLight(const Light *light) = 0;
-		virtual bool calculateObject(const Material *material = nullptr) = 0;
+		virtual bool calculateObject(const std::unique_ptr<const Material> *material) = 0;
+		bool calculateObject() { return calculateObject(nullptr); }
 
 		/* Mesh-related interface functions below, only for Mesh objects */
 		virtual int lastVertexId() const { return -1; }
 		virtual void addPoint(const Point3 &p) { }
 		virtual void addOrcoPoint(const Point3 &p) { }
 		virtual void addNormal(const Vec3 &n) { }
-		virtual void addFace(const std::vector<int> &vertices, const std::vector<int> &vertices_uv, const Material *mat) { }
+		virtual void addFace(const std::vector<int> &vertices, const std::vector<int> &vertices_uv, const std::unique_ptr<const Material> *material) { }
 		virtual int addUvValue(const Uv &uv) { return -1; }
 		virtual bool hasNormalsExported() const { return false; }
 		virtual int numNormals() const { return 0; }

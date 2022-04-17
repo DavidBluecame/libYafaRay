@@ -44,17 +44,17 @@ IntersectData TrianglePrimitive::intersect(const Ray &ray, const Matrix4 *obj_to
 IntersectData TrianglePrimitive::intersect(const Ray &ray, const std::array<Point3, 3> &vertices)
 {
 	//Tomas Moller and Ben Trumbore ray intersection scheme
-	const Vec3 edge_1 = vertices[1] - vertices[0];
-	const Vec3 edge_2 = vertices[2] - vertices[0];
+	const Vec3 edge_1{vertices[1] - vertices[0]};
+	const Vec3 edge_2{vertices[2] - vertices[0]};
 	const float epsilon = 0.1f * min_raydist_global * std::max(edge_1.length(), edge_2.length());
-	const Vec3 pvec = ray.dir_ ^ edge_2;
+	const Vec3 pvec{ray.dir_ ^ edge_2};
 	const float det = edge_1 * pvec;
 	if(det > -epsilon && det < epsilon) return {};
 	const float inv_det = 1.f / det;
-	const Vec3 tvec = ray.from_ - vertices[0];
+	const Vec3 tvec{ray.from_ - vertices[0]};
 	const float u = (tvec * pvec) * inv_det;
 	if(u < 0.f || u > 1.f) return {};
-	const Vec3 qvec = tvec ^ edge_1;
+	const Vec3 qvec{tvec ^ edge_1};
 	const float v = (ray.dir_ * qvec) * inv_det;
 	if((v < 0.f) || ((u + v) > 1.f)) return {};
 	const float t = edge_2 * qvec * inv_det;
@@ -98,7 +98,7 @@ std::unique_ptr<const SurfacePoint> TrianglePrimitive::getSurface(const RayDiffe
 {
 	auto sp = std::unique_ptr<SurfacePoint>(new SurfacePoint);
 	sp->intersect_data_ = intersect_data;
-	sp->ng_ = getGeometricNormal(obj_to_world);
+	sp->ng_ = Primitive::getGeometricNormal(obj_to_world);
 	const float barycentric_u = intersect_data.barycentric_u_, barycentric_v = intersect_data.barycentric_v_, barycentric_w = intersect_data.barycentric_w_;
 	if(base_mesh_object_.isSmooth() || base_mesh_object_.hasNormalsExported())
 	{
@@ -123,7 +123,7 @@ std::unique_ptr<const SurfacePoint> TrianglePrimitive::getSurface(const RayDiffe
 	{
 		sp->orco_p_ = hit_point;
 		sp->has_orco_ = false;
-		sp->orco_ng_ = getGeometricNormal();
+		sp->orco_ng_ = Primitive::getGeometricNormal();
 	}
 	bool implicit_uv = true;
 	const std::array<Point3, 3> p { getVertex(0, obj_to_world), getVertex(1, obj_to_world), getVertex(2, obj_to_world) };
@@ -141,8 +141,8 @@ std::unique_ptr<const SurfacePoint> TrianglePrimitive::getSurface(const RayDiffe
 		if(std::abs(det) > 1e-30f)
 		{
 			const float invdet = 1.f / det;
-			const Vec3 dp_1 = p[1] - p[0];
-			const Vec3 dp_2 = p[2] - p[0];
+			const Vec3 dp_1{p[1] - p[0]};
+			const Vec3 dp_2{p[2] - p[0]};
 			sp->dp_du_ = (dv_2 * dp_1 - dv_1 * dp_2) * invdet;
 			sp->dp_dv_ = (du_1 * dp_2 - du_2 * dp_1) * invdet;
 			implicit_uv = false;
@@ -167,23 +167,23 @@ std::unique_ptr<const SurfacePoint> TrianglePrimitive::getSurface(const RayDiffe
 	sp->has_uv_ = base_mesh_object_.hasUv();
 	sp->prim_num_ = getSelfIndex();
 	sp->p_ = hit_point;
-	Vec3::createCs(sp->n_, sp->nu_, sp->nv_);
+	std::tie(sp->nu_, sp->nv_) = Vec3::createCoordsSystem(sp->n_);
 	calculateShadingSpace(*sp);
 	sp->material_ = getMaterial();
 	sp->setRayDifferentials(ray_differentials);
-	sp->mat_data_ = sp->material_->initBsdf(*sp, camera);
+	sp->mat_data_ = std::shared_ptr<const MaterialData>(sp->material_->initBsdf(*sp, camera));
 	return sp;
 }
 
-void TrianglePrimitive::calculateShadingSpace(SurfacePoint &sp) const
+void TrianglePrimitive::calculateShadingSpace(SurfacePoint &sp)
 {
 	// transform dPdU and dPdV in shading space
-	sp.ds_du_.x_ = sp.nu_ * sp.dp_du_;
-	sp.ds_du_.y_ = sp.nv_ * sp.dp_du_;
-	sp.ds_du_.z_ = sp.n_ * sp.dp_du_;
-	sp.ds_dv_.x_ = sp.nu_ * sp.dp_dv_;
-	sp.ds_dv_.y_ = sp.nv_ * sp.dp_dv_;
-	sp.ds_dv_.z_ = sp.n_ * sp.dp_dv_;
+	sp.ds_du_.x() = sp.nu_ * sp.dp_du_;
+	sp.ds_du_.y() = sp.nv_ * sp.dp_du_;
+	sp.ds_du_.z() = sp.n_ * sp.dp_du_;
+	sp.ds_dv_.x() = sp.nu_ * sp.dp_dv_;
+	sp.ds_dv_.y() = sp.nv_ * sp.dp_dv_;
+	sp.ds_dv_.z() = sp.n_ * sp.dp_dv_;
 }
 
 PolyDouble::ClipResultWithBound TrianglePrimitive::clipToBound(Logger &logger, const std::array<Vec3Double, 2> &bound, const ClipPlane &clip_plane, const PolyDouble &poly, const Matrix4 *obj_to_world) const
@@ -193,7 +193,7 @@ PolyDouble::ClipResultWithBound TrianglePrimitive::clipToBound(Logger &logger, c
 		const double split = (clip_plane.pos_ == ClipPlane::Pos::Lower) ? bound[0][clip_plane.axis_] : bound[1][clip_plane.axis_];
 		PolyDouble::ClipResultWithBound clip_result = PolyDouble::planeClipWithBound(logger, split, clip_plane, poly);
 		if(clip_result.clip_result_code_ == PolyDouble::ClipResultWithBound::Correct) return clip_result;
-		else if(clip_result.clip_result_code_ == PolyDouble::ClipResultWithBound::NoOverlapDisappeared) return {PolyDouble::ClipResultWithBound::NoOverlapDisappeared};
+		else if(clip_result.clip_result_code_ == PolyDouble::ClipResultWithBound::NoOverlapDisappeared) return PolyDouble::ClipResultWithBound(PolyDouble::ClipResultWithBound::NoOverlapDisappeared);
 		//else: do initial clipping below, if there are any other PolyDouble::ClipResult results (errors)
 	}
 	// initial clip
@@ -201,14 +201,14 @@ PolyDouble::ClipResultWithBound TrianglePrimitive::clipToBound(Logger &logger, c
 		getVertex(0, obj_to_world), getVertex(1, obj_to_world), getVertex(2, obj_to_world)
 	};
 	PolyDouble poly_triangle;
-	for(const auto &vert : triangle_vertices) poly_triangle.addVertex({vert.x_, vert.y_, vert.z_ });
+	for(const auto &vert : triangle_vertices) poly_triangle.addVertex({vert.x(), vert.y(), vert.z() });
 	return PolyDouble::boxClip(logger, bound[1], poly_triangle, bound[0]);
 }
 
 float TrianglePrimitive::surfaceArea(const std::array<Point3, 3> &vertices)
 {
-	const Vec3 vec_0_1 = vertices[1] - vertices[0];
-	const Vec3 vec_0_2 = vertices[2] - vertices[0];
+	const Vec3 vec_0_1{vertices[1] - vertices[0]};
+	const Vec3 vec_0_2{vertices[2] - vertices[0]};
 	return 0.5f * (vec_0_1 ^ vec_0_2).length();
 }
 
@@ -217,18 +217,20 @@ float TrianglePrimitive::surfaceArea(const Matrix4 *obj_to_world) const
 	return surfaceArea({ getVertex(0, obj_to_world), getVertex(1, obj_to_world), getVertex(2, obj_to_world) });
 }
 
-void TrianglePrimitive::sample(float s_1, float s_2, Point3 &p, Vec3 &n, const Matrix4 *obj_to_world) const
+std::pair<Point3, Vec3> TrianglePrimitive::sample(float s_1, float s_2, const Matrix4 *obj_to_world) const
 {
-	TrianglePrimitive::sample(s_1, s_2, p, { getVertex(0, obj_to_world), getVertex(1, obj_to_world), getVertex(2, obj_to_world) });
-	n = getGeometricNormal(obj_to_world);
+	return {
+		TrianglePrimitive::sample(s_1, s_2, {getVertex(0, obj_to_world), getVertex(1, obj_to_world), getVertex(2, obj_to_world)}),
+		Primitive::getGeometricNormal(obj_to_world)
+	};
 }
 
-void TrianglePrimitive::sample(float s_1, float s_2, Point3 &p, const std::array<Point3, 3> &vertices)
+Point3 TrianglePrimitive::sample(float s_1, float s_2, const std::array<Point3, 3> &vertices)
 {
 	const float su_1 = math::sqrt(s_1);
 	const float u = 1.f - su_1;
 	const float v = s_2 * su_1;
-	p = u * vertices[0] + v * vertices[1] + (1.f - u - v) * vertices[2];
+	return u * vertices[0] + v * vertices[1] + (1.f - u - v) * vertices[2];
 }
 
 /*************************************************************
@@ -254,10 +256,10 @@ struct MinMax
 {
 	double min_;
 	double max_;
-	static MinMax find(const Vec3Double values);
+	static MinMax find(const Vec3Double &values);
 };
 
-MinMax MinMax::find(const Vec3Double values)
+MinMax MinMax::find(const Vec3Double &values)
 {
 	MinMax min_max;
 	min_max.min_ = math::min(values[0], values[1], values[2]);

@@ -29,12 +29,12 @@ void SurfacePoint::setRayDifferentials(const RayDifferentials *ray_differentials
 		// Estimate screen-space change in \pt and $(u,v)$
 		// Compute auxiliary intersection points with plane
 		const float d = -(n_ * p_);
-		const Vec3 rxv(ray_differentials->xfrom_);
+		const Vec3 rxv{ray_differentials->xfrom_};
 		const float tx = -((n_ * rxv) + d) / (n_ * ray_differentials->xdir_);
-		const Point3 px = ray_differentials->xfrom_ + tx * ray_differentials->xdir_;
+		const Point3 px{ray_differentials->xfrom_ + tx * ray_differentials->xdir_};
 		const Vec3 ryv(ray_differentials->yfrom_);
 		const float ty = -((n_ * ryv) + d) / (n_ * ray_differentials->ydir_);
-		const Point3 py = ray_differentials->yfrom_ + ty * ray_differentials->ydir_;
+		const Point3 py{ray_differentials->yfrom_ + ty * ray_differentials->ydir_};
 		differentials_ = std::unique_ptr<SurfaceDifferentials>(new SurfaceDifferentials{px - p_, py - p_});
 	}
 }
@@ -79,7 +79,8 @@ std::unique_ptr<RayDifferentials> SurfacePoint::reflectedRay(const RayDifferenti
 	//				  bsdf->dgShading.dndv * bsdf->dgShading.dvdx;
 	//	Normal dndy = bsdf->dgShading.dndu * bsdf->dgShading.dudy +
 	//				  bsdf->dgShading.dndv * bsdf->dgShading.dvdy;
-	const Vec3 dwodx = in_dir - in_differentials->xdir_, dwody = in_dir - in_differentials->ydir_;
+	const Vec3 dwodx{in_dir - in_differentials->xdir_};
+	const Vec3 dwody{in_dir - in_differentials->ydir_};
 	const float d_d_ndx = (dwodx * n_); // + (out.dir * dndx);
 	const float d_d_ndy = (dwody * n_); // + (out.dir * dndy);
 	out_differentials->xdir_ = out_dir - dwodx + 2 * (/* (out.dir * sp.N) * dndx + */ d_d_ndx * n_);
@@ -97,7 +98,8 @@ std::unique_ptr<RayDifferentials> SurfacePoint::refractedRay(const RayDifferenti
 	//if (Dot(wo, n) < 0) eta = 1.f / eta;
 	//Normal dndx = bsdf->dgShading.dndu * bsdf->dgShading.dudx + bsdf->dgShading.dndv * bsdf->dgShading.dvdx;
 	//Normal dndy = bsdf->dgShading.dndu * bsdf->dgShading.dudy + bsdf->dgShading.dndv * bsdf->dgShading.dvdy;
-	const Vec3 dwodx = in_dir - in_differentials->xdir_, dwody = in_dir - in_differentials->ydir_;
+	const Vec3 dwodx{in_dir - in_differentials->xdir_};
+	const Vec3 dwody{in_dir - in_differentials->ydir_};
 	const float d_d_ndx = (dwodx * n_); // + Dot(wo, dndx);
 	const float d_d_ndy = (dwody * n_); // + Dot(wo, dndy);
 	//	float mu = IOR * (in.dir * sp.N) - (out.dir * sp.N);
@@ -114,28 +116,28 @@ float SurfacePoint::projectedPixelArea()
 	else return 0.f;
 }
 
-void SurfacePoint::dUdvFromDpdPdUdPdV(float &du, float &dv, const Point3 &dp, const Vec3 &dp_du, const Vec3 &dp_dv) const
+void SurfacePoint::dUdvFromDpdPdUdPdV(float &du, float &dv, const Point3 &dp, const Vec3 &dp_du, const Vec3 &dp_dv)
 {
-	const float det_xy = (dp_du.x_ * dp_dv.y_) - (dp_dv.x_ * dp_du.y_);
-	const float det_xz = (dp_du.x_ * dp_dv.z_) - (dp_dv.x_ * dp_du.z_);
-	const float det_yz = (dp_du.y_ * dp_dv.z_) - (dp_dv.y_ * dp_du.z_);
+	const float det_xy = (dp_du.x() * dp_dv.y()) - (dp_dv.x() * dp_du.y());
+	const float det_xz = (dp_du.x() * dp_dv.z()) - (dp_dv.x() * dp_du.z());
+	const float det_yz = (dp_du.y() * dp_dv.z()) - (dp_dv.y() * dp_du.z());
 
 	if(std::abs(det_xy) > 0.f && std::abs(det_xy) > std::abs(det_xz) && std::abs(det_xy) > std::abs(det_yz))
 	{
-		du = ((dp.x_ * dp_dv.y_) - (dp_dv.x_ * dp.y_)) / det_xy;
-		dv = ((dp_du.x_ * dp.y_) - (dp.x_ * dp_du.y_)) / det_xy;
+		du = ((dp.x() * dp_dv.y()) - (dp_dv.x() * dp.y())) / det_xy;
+		dv = ((dp_du.x() * dp.y()) - (dp.x() * dp_du.y())) / det_xy;
 	}
 
 	else if(std::abs(det_xz) > 0.f && std::abs(det_xz) > std::abs(det_xy) && std::abs(det_xz) > std::abs(det_yz))
 	{
-		du = ((dp.x_ * dp_dv.z_) - (dp_dv.x_ * dp.z_)) / det_xz;
-		dv = ((dp_du.x_ * dp.z_) - (dp.x_ * dp_du.z_)) / det_xz;
+		du = ((dp.x() * dp_dv.z()) - (dp_dv.x() * dp.z())) / det_xz;
+		dv = ((dp_du.x() * dp.z()) - (dp.x() * dp_du.z())) / det_xz;
 	}
 
 	else if(std::abs(det_yz) > 0.f && std::abs(det_yz) > std::abs(det_xy) && std::abs(det_yz) > std::abs(det_xz))
 	{
-		du = ((dp.y_ * dp_dv.z_) - (dp_dv.y_ * dp.z_)) / det_yz;
-		dv = ((dp_du.y_ * dp.z_) - (dp.y_ * dp_du.z_)) / det_yz;
+		du = ((dp.y() * dp_dv.z()) - (dp_dv.y() * dp.z())) / det_yz;
+		dv = ((dp_du.y() * dp.z()) - (dp.y() * dp_du.z())) / det_yz;
 	}
 }
 
@@ -143,8 +145,8 @@ void SurfacePoint::getUVdifferentials(float &du_dx, float &dv_dx, float &du_dy, 
 {
 	if(differentials_)
 	{
-		dUdvFromDpdPdUdPdV(du_dx, dv_dx, differentials_->dp_dx_, dp_du_abs_, dp_dv_abs_);
-		dUdvFromDpdPdUdPdV(du_dy, dv_dy, differentials_->dp_dy_, dp_du_abs_, dp_dv_abs_);
+		dUdvFromDpdPdUdPdV(du_dx, dv_dx, static_cast<Point3>(differentials_->dp_dx_), dp_du_abs_, dp_dv_abs_);
+		dUdvFromDpdPdUdPdV(du_dy, dv_dy, static_cast<Point3>(differentials_->dp_dy_), dp_du_abs_, dp_dv_abs_);
 	}
 }
 

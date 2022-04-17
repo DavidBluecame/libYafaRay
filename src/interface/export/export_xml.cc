@@ -173,9 +173,9 @@ void ExportXml::writeParam(const std::string &name, const Parameter &param, std:
 	}
 	else if(type == Parameter::Vector)
 	{
-		Point3 p(0.f);
+		Point3 p{0.f, 0.f, 0.f};
 		param.getVal(p);
-		file << "<" << name << " x=\"" << p.x_ << "\" y=\"" << p.y_ << "\" z=\"" << p.z_ << "\"/>\n";
+		file << "<" << name << " x=\"" << p.x() << "\" y=\"" << p.y() << "\" z=\"" << p.z() << "\"/>\n";
 	}
 	else if(type == Parameter::Color)
 	{
@@ -241,7 +241,7 @@ Texture *ExportXml::createTexture(const char *name) noexcept
 	return nullptr;
 }
 
-Material *ExportXml::createMaterial(const char *name) noexcept
+const Material *ExportXml::createMaterial(const char *name) noexcept
 {
 	file_ << "\n<material name=\"" << name << "\">\n";
 	writeParamMap(*params_);
@@ -249,14 +249,14 @@ Material *ExportXml::createMaterial(const char *name) noexcept
 	file_ << "</material>\n";
 	return nullptr;
 }
-Camera *ExportXml::createCamera(const char *name) noexcept
+const Camera * ExportXml::createCamera(const char *name) noexcept
 {
 	file_ << "\n<camera name=\"" << name << "\">\n";
 	writeParamMap(*params_);
 	file_ << "</camera>\n";
 	return nullptr;
 }
-Background *ExportXml::createBackground(const char *name) noexcept
+const Background * ExportXml::createBackground(const char *name) noexcept
 {
 	file_ << "\n<background name=\"" << name << "\">\n";
 	writeParamMap(*params_);

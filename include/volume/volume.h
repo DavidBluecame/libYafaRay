@@ -38,8 +38,8 @@ class MaterialData;
 class VolumeHandler
 {
 	public:
-		static std::unique_ptr<VolumeHandler> factory(Logger &logger, const ParamMap &params, const Scene &scene);
-		VolumeHandler(Logger &logger) : logger_(logger) { }
+		static VolumeHandler *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
+		explicit VolumeHandler(Logger &logger) : logger_(logger) { }
 		virtual Rgb transmittance(const Ray &ray) const = 0;
 		virtual bool scatter(const Ray &ray, Ray &s_ray, PSample &s) const = 0;
 		virtual ~VolumeHandler() = default;
@@ -51,9 +51,9 @@ class VolumeHandler
 class VolumeRegion
 {
 	public:
-		static std::unique_ptr<VolumeRegion> factory(Logger &logger, const ParamMap &params, const Scene &scene);
-		VolumeRegion(Logger &logger) : logger_(logger) { }
-		VolumeRegion(Logger &logger, Rgb sa, Rgb ss, Rgb le, float gg, Point3 pmin, Point3 pmax, int attgrid_scale);
+		static VolumeRegion *factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params);
+		explicit VolumeRegion(Logger &logger) : logger_(logger) { }
+		VolumeRegion(Logger &logger, const Rgb &sa, const Rgb &ss, const Rgb &le, float gg, const Point3 &pmin, const Point3 &pmax, int attgrid_scale);
 		virtual ~VolumeRegion() = default;
 
 		virtual Rgb sigmaA(const Point3 &p, const Vec3 &v) const = 0;
@@ -64,7 +64,7 @@ class VolumeRegion
 			return sigmaA(p, v) + sigmaS(p, v);
 		}
 
-		float attenuation(const Point3 p, const Light *l) const;
+		float attenuation(const Point3 &p, const Light *l) const;
 
 		// w_l: dir *from* the light, w_s: direction, into which should be scattered
 		virtual float p(const Vec3 &w_l, const Vec3 &w_s) const
@@ -98,46 +98,46 @@ class VolumeRegion
 class DensityVolumeRegion : public VolumeRegion
 {
 	protected:
-		DensityVolumeRegion(Logger &logger) : VolumeRegion(logger) {}
-		DensityVolumeRegion(Logger &logger, Rgb sa, Rgb ss, Rgb le, float gg, Point3 pmin, Point3 pmax, int attgrid_scale) :
+		explicit DensityVolumeRegion(Logger &logger) : VolumeRegion(logger) {}
+		DensityVolumeRegion(Logger &logger, const Rgb &sa, const Rgb &ss, const Rgb &le, float gg, const Point3 &pmin, const Point3 &pmax, int attgrid_scale) :
 			VolumeRegion(logger, sa, ss, le, gg, pmin, pmax, attgrid_scale) {}
 
-		virtual float density(Point3 p) const = 0;
+		virtual float density(const Point3 &p) const = 0;
 
-		virtual Rgb tau(const Ray &ray, float step_size, float offset) const override;
+		Rgb tau(const Ray &ray, float step_size, float offset) const override;
 
-		virtual Rgb sigmaA(const Point3 &p, const Vec3 &v) const override
+		Rgb sigmaA(const Point3 &p, const Vec3 &v) const override
 		{
-			if(!have_s_a_) return Rgb(0.f);
+			if(!have_s_a_) return Rgb{0.f};
 			if(b_box_.includes(p))
 			{
 				return s_a_ * density(p);
 			}
 			else
-				return Rgb(0.f);
+				return Rgb{0.f};
 
 		}
 
-		virtual Rgb sigmaS(const Point3 &p, const Vec3 &v) const override
+		Rgb sigmaS(const Point3 &p, const Vec3 &v) const override
 		{
-			if(!have_s_s_) return Rgb(0.f);
+			if(!have_s_s_) return Rgb{0.f};
 			if(b_box_.includes(p))
 			{
 				return s_s_ * density(p);
 			}
 			else
-				return Rgb(0.f);
+				return Rgb{0.f};
 		}
 
-		virtual Rgb emission(const Point3 &p, const Vec3 &v) const override
+		Rgb emission(const Point3 &p, const Vec3 &v) const override
 		{
-			if(!have_l_e_) return Rgb(0.f);
+			if(!have_l_e_) return Rgb{0.f};
 			if(b_box_.includes(p))
 			{
 				return l_e_ * density(p);
 			}
 			else
-				return Rgb(0.f);
+				return Rgb{0.f};
 		}
 
 };

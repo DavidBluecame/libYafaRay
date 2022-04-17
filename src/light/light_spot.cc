@@ -35,7 +35,7 @@ SpotLight::SpotLight(Logger &logger, const Point3 &from, const Point3 &to, const
 	ndir_ = (from - to).normalize();
 	dir_ = -ndir_;
 	color_ = col * power;
-	Vec3::createCs(dir_, du_, dv_);
+	std::tie(du_, dv_) = Vec3::createCoordsSystem(dir_);
 	double rad_angle = math::degToRad(angle);
 	double rad_inner_angle = rad_angle * (1.f - falloff);
 	cos_start_ = math::cos(rad_inner_angle);
@@ -214,15 +214,15 @@ bool SpotLight::intersect(const Ray &ray, float &t, Rgb &col, float &ipdf) const
 
 	if(cos_a == 0.f) return false;
 
-	t = (dir_ * Vec3(position_ - ray.from_)) / cos_a;
+	t = (dir_ * (position_ - ray.from_)) / cos_a;
 
 	if(t < 0.f) return false;
 
-	Point3 p(ray.from_ + Point3(t * ray.dir_));
+	Point3 p{ray.from_ + t * ray.dir_};
 
-	if(dir_ * Vec3(p - position_) == 0)
+	if(dir_ * (p - position_) == 0.f)
 	{
-		if(p * p <= 1e-2)
+		if(p * p <= 1e-2f)
 		{
 			float cosa = dir_ * ray.dir_;
 
@@ -247,9 +247,9 @@ bool SpotLight::intersect(const Ray &ray, float &t, Rgb &col, float &ipdf) const
 	return false;
 }
 
-std::unique_ptr<Light> SpotLight::factory(Logger &logger, ParamMap &params, const Scene &scene)
+Light * SpotLight::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params)
 {
-	Point3 from(0.0);
+	Point3 from{0.f, 0.f, 0.f};
 	Point3 to(0.f, 0.f, -1.f);
 	Rgb color(1.0);
 	float power = 1.0;
@@ -278,7 +278,7 @@ std::unique_ptr<Light> SpotLight::factory(Logger &logger, ParamMap &params, cons
 	params.getParam("with_caustic", shoot_c);
 	params.getParam("with_diffuse", shoot_d);
 
-	auto light = std::unique_ptr<SpotLight>(new SpotLight(logger, from, to, color, power, angle, falloff, soft_shadows, smpl, ssfuzzy, light_enabled, cast_shadows));
+	auto light = new SpotLight(logger, from, to, color, power, angle, falloff, soft_shadows, smpl, ssfuzzy, light_enabled, cast_shadows);
 
 	light->shoot_caustic_ = shoot_c;
 	light->shoot_diffuse_ = shoot_d;

@@ -28,7 +28,7 @@
 
 BEGIN_YAFARAY
 
-// sunsky, from 'A Practical Analytic Model For DayLight" by Preetham, Shirley & Smits.
+// sunsky, from 'A Practical Analytic Model For DayLight' by Preetham, Shirley & Smits.
 // http://www.cs.utah.edu/vissim/papers/sunsky/
 // based on the actual code by Brian Smits
 // and a thread on gamedev.net on skycolor algorithms
@@ -36,13 +36,11 @@ BEGIN_YAFARAY
 class SunSkyBackground final : public Background
 {
 	public:
-		static std::unique_ptr<Background> factory(Logger &logger, ParamMap &params, Scene &scene);
-		virtual ~SunSkyBackground() override;
+		static const Background * factory(Logger &logger, Scene &scene, const std::string &name, const ParamMap &params);
 
 	private:
-		SunSkyBackground(Logger &logger, const Point3 dir, float turb, float a_var, float b_var, float c_var, float d_var, float e_var, float pwr, bool ibl, bool with_caustic);
-		virtual Rgb operator()(const Vec3 &dir, bool from_postprocessed = false) const override;
-		virtual Rgb eval(const Vec3 &dir, bool from_postprocessed = false) const override;
+		SunSkyBackground(Logger &logger, const Point3 &dir, float turb, float a_var, float b_var, float c_var, float d_var, float e_var, float pwr);
+		Rgb eval(const Vec3 &dir, bool use_ibl_blur) const override;
 		Rgb getSkyCol(const Vec3 &dir) const;
 		static Rgb computeAttenuatedSunlight(float theta, int turbidity);
 
@@ -50,9 +48,9 @@ class SunSkyBackground final : public Background
 		double theta_s_, phi_s_;	// sun coords
 		double theta_2_, theta_3_, t_, t_2_;
 		double zenith_Y_, zenith_x_, zenith_y_;
-		double perez_Y_[5], perez_x_[5], perez_y_[5];
+		std::array<double, 5> perez_Y_, perez_x_, perez_y_;
 		double angleBetween(double thetav, double phiv) const;
-		double perezFunction(const double *lam, double theta, double gamma, double lvz) const;
+		double perezFunction(const std::array<double, 5> &lam, double theta, double gamma, double lvz) const;
 		float power_;
 };
 

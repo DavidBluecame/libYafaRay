@@ -42,7 +42,7 @@ Rgb LightMaterial::sample(const MaterialData *mat_data, const SurfacePoint &sp, 
 {
 	s.pdf_ = 0.f;
 	w = 0.f;
-	return Rgb(0.f);
+	return Rgb{0.f};
 }
 
 Rgb LightMaterial::emit(const MaterialData *mat_data, const SurfacePoint &sp, const Vec3 &wo) const
@@ -57,7 +57,7 @@ float LightMaterial::pdf(const MaterialData *mat_data, const SurfacePoint &sp, c
 	return 0.f;
 }
 
-std::unique_ptr<Material> LightMaterial::factory(Logger &logger, ParamMap &params, std::list<ParamMap> &eparans, const Scene &scene)
+const Material *LightMaterial::factory(Logger &logger, const Scene &scene, const std::string &name, const ParamMap &params, const std::list<ParamMap> &nodes_params)
 {
 	Rgb col(1.0);
 	double power = 1.0;
@@ -66,7 +66,7 @@ std::unique_ptr<Material> LightMaterial::factory(Logger &logger, ParamMap &param
 	params.getParam("color", col);
 	params.getParam("power", power);
 	params.getParam("double_sided", ds);
-	return std::unique_ptr<Material>(new LightMaterial(logger, col * static_cast<float>(power), ds));
+	return new LightMaterial(logger, col * static_cast<float>(power), ds);
 }
 
 END_YAFARAY
