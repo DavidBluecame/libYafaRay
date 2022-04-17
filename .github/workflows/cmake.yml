@@ -26,11 +26,6 @@ jobs:
             artifact: "test_windows.zip"
           }
         - {
-            name: "Test Ubuntu 16.04 LTS",
-            os: ubuntu-16.04,
-            artifact: "test_ubuntu_16_04.zip"
-          }
-        - {
             name: "Test Ubuntu 18.04 LTS",
             os: ubuntu-18.04,
             artifact: "test_ubuntu_18_04.zip"
@@ -56,10 +51,14 @@ jobs:
 
     - name: Build
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX:PATH=${{github.workspace}}/install
+
+    - name: Install
+      # Install files in install directory
+      run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Test
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}/install
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}}
@@ -71,9 +70,4 @@ jobs:
         name: ${{ matrix.config.artifact }} # optional, default is artifact
         # A file, directory or wildcard pattern that describes what to upload
         path: |
-          ${{github.workspace}}/build/src/libyafaray*.*
-          ${{github.workspace}}/build/tests/test00/yafaray_test*
-          ${{github.workspace}}/build/tests/test01/yafaray_test*
-          ${{github.workspace}}/build/tests/test02/yafaray_test*
-          ${{github.workspace}}/build/tests/test03/yafaray_test*
-        
+          ${{github.workspace}}/install/*
