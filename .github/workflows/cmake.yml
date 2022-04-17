@@ -65,7 +65,7 @@ jobs:
     - name: Install dependencies on MacOS
       if: startsWith(matrix.config.os, 'mac')
       run: |
-        brew install install libpng jpeg libtiff openexr opencv freetype
+        brew install libpng jpeg libtiff openexr opencv freetype
 
     - name: Configure CMake in Ubuntu
       if: startsWith(matrix.config.os, 'ubuntu')
