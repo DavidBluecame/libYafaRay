@@ -62,7 +62,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype-dev
 
-- name: Install dependencies on MacOS
+    - name: Install dependencies on MacOS
       if: startsWith(matrix.config.os, 'mac')
       run: |
         brew install install libpng jpeg libtiff openexr opencv freetype
