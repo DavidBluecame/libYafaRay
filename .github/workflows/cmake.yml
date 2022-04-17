@@ -1,4 +1,4 @@
-name: YafaRay-Build-Test
+name: "build"
 
 on:
   push:
@@ -44,11 +44,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
-    #- name: Install dependencies on Windows MSVC
-    #  if: startsWith(matrix.config.name, 'Test Windows MSVC')
-    #  run: |
-    #    sudo apt-get update
-    #    sudo apt-get install libpng-dev libjpeg-dev libtiff-dev libopenexr-dev libopencv-dev libfreetype6-dev
+    - name: Install dependencies on Windows MSVC
+      if: startsWith(matrix.config.name, 'Test Windows MSVC')
+      run: |
+        - run: choco install opencv
     
     - name: Install dependencies on Ubuntu 18.04 LTS
       if: startsWith(matrix.config.os, 'ubuntu-18.04')
@@ -77,7 +76,7 @@ jobs:
       if: startsWith(matrix.config.os, 'windows')
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX:PATH=${{github.workspace}}/install -DYAFARAY_WITH_Freetype=OFF -DYAFARAY_WITH_JPEG=OFF -DYAFARAY_WITH_OpenCV=OFF -DYAFARAY_WITH_OpenEXR=OFF -DYAFARAY_WITH_PNG=OFF -DYAFARAY_WITH_TIFF=OFF
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX:PATH=${{github.workspace}}/install -DYAFARAY_WITH_Freetype=OFF -DYAFARAY_WITH_JPEG=OFF -DYAFARAY_WITH_OpenCV=ON -DYAFARAY_WITH_OpenEXR=OFF -DYAFARAY_WITH_PNG=OFF -DYAFARAY_WITH_TIFF=OFF
 
     - name: Configure CMake in MacOS
       if: startsWith(matrix.config.os, 'macos')
